@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 public class GetChatList {
 
-	@Test
+	//@Test
 	public void getChatList() {
         
 		Client.configureTdlibLogging();

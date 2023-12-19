@@ -1,8 +1,9 @@
-package org.amuradon.sigpron;
+package org.amuradon.tralon.sigpron;
 
 import java.util.Arrays;
 
-import org.amuradon.sigpron.telegram.TelegramClient;
+import org.amuradon.tralon.sigpron.secrets.SecretsManager;
+import org.amuradon.tralon.sigpron.telegram.TelegramClient;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.drinkless.tdlib.TdApi.UpdateNewMessage;
@@ -18,8 +19,10 @@ public class MyApp {
 		
 		Client.configureTdlibLogging();
 
+		SecretsManager secretsManager = new SecretsManager();
+		
         // create client
-        TelegramClient client = new TelegramClient(Arrays.asList(new NewMessageHandler()));
+        TelegramClient client = new TelegramClient(Arrays.asList(new NewMessageHandler()), secretsManager.getTelegramSecret());
         client.login();
 
 	}

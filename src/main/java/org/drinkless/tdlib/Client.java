@@ -9,7 +9,7 @@ package org.drinkless.tdlib;
 import java.io.IOError;
 import java.io.IOException;
 
-import org.amuradon.sigpron.telegram.handlers.DefaultLogMessageHandler;
+import org.amuradon.tralon.sigpron.telegram.handlers.DefaultLogMessageHandler;
 
 /**
  * Main class for interaction with the TDLib.

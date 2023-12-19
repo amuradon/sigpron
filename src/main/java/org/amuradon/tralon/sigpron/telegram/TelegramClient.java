@@ -1,4 +1,4 @@
-package org.amuradon.sigpron.telegram;
+package org.amuradon.tralon.sigpron.telegram;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.amuradon.sigpron.telegram.handlers.DefautlResultHandler;
+import org.amuradon.tralon.sigpron.telegram.handlers.DefautlResultHandler;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.drinkless.tdlib.TdApi.AuthorizationState;
@@ -21,13 +21,15 @@ public class TelegramClient {
 
 	private final List<ResultHandler> updateHandlers;
 	private final ConcurrentHashMap<Long, ResultHandler> handlers;
+	private final TelegramSecret secret;
 
 	private boolean logged;
 	
-	public TelegramClient(List<ResultHandler> updateHandlers) {
+	public TelegramClient(List<ResultHandler> updateHandlers, TelegramSecret secret) {
         this.updateHandlers = new ArrayList<>();
         this.updateHandlers.add(new AuthorizationHandler());
         this.updateHandlers.addAll(updateHandlers);
+        this.secret = secret;
         handlers = new ConcurrentHashMap<>();
     }
 	
@@ -116,8 +118,8 @@ public class TelegramClient {
 					request.databaseDirectory = "tdlib";
 					request.useMessageDatabase = false;
 					request.useSecretChats = false;
-					request.apiId = 0;
-					request.apiHash = "";
+					request.apiId = client.secret.apiId();
+					request.apiHash = client.secret.apiHash();
 					request.systemLanguageCode = "en";
 					request.deviceModel = "Desktop";
 					request.applicationVersion = "1.0";

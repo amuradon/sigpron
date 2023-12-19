@@ -2,7 +2,8 @@ package org.amuradon.sigpron;
 
 import java.util.Collections;
 
-import org.amuradon.sigpron.telegram.TelegramClient;
+import org.amuradon.tralon.sigpron.secrets.SecretsManager;
+import org.amuradon.tralon.sigpron.telegram.TelegramClient;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,8 @@ public class GetChatList {
         
 		Client.configureTdlibLogging();
 		
-		TelegramClient client = new TelegramClient(Collections.emptyList());
+		SecretsManager secretsManager = new SecretsManager();
+		TelegramClient client = new TelegramClient(Collections.emptyList(), secretsManager.getTelegramSecret());
 		client.login();
 		
             // send LoadChats request if there are some unknown chats and have not enough known chats
@@ -42,5 +44,10 @@ public class GetChatList {
                     }
                 }
             });
+	}
+	
+	@Test
+	public void secrets() {
+		new SecretsManager().getTelegramSecret();
 	}
 }

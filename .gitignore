@@ -3,4 +3,4 @@
 .project
 .settings/*
 *.log
-td.binlog
+tdlib/*

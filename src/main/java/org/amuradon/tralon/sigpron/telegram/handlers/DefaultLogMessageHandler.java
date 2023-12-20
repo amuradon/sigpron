@@ -1,91 +1,20 @@
 package org.amuradon.tralon.sigpron.telegram.handlers;
 
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.drinkless.tdlib.Client;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultLogMessageHandler implements Client.LogMessageHandler {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(DefaultLogMessageHandler.class);
+	
 	@Override
 	public void onLogMessage(int verbosityLevel, String message) {
+		LOGGER.error(message);
 		if (verbosityLevel == 0) {
-            onFatalError(message);
-            return;
+			throw new Error(message);
         }
-        System.err.println(message);
-		
 	}
 	
-	private void onFatalError(String errorMessage) {
-        
-
-        final AtomicLong errorThrowTime = new AtomicLong(Long.MAX_VALUE);
-        new Thread(new ThrowError(errorMessage, errorThrowTime), "TDLib fatal error thread").start();
-
-        // wait at least 10 seconds after the error is thrown
-        while (errorThrowTime.get() >= System.currentTimeMillis() - 10000) {
-            try {
-                Thread.sleep(1000 /* milliseconds */);
-            } catch (InterruptedException ignore) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-	private final class ThrowError implements Runnable {
-        private final String errorMessage;
-        private final AtomicLong errorThrowTime;
-
-        private ThrowError(String errorMessage, AtomicLong errorThrowTime) {
-            this.errorMessage = errorMessage;
-            this.errorThrowTime = errorThrowTime;
-        }
-
-        @Override
-        public void run() {
-            if (isDatabaseBrokenError(errorMessage) || isDiskFullError(errorMessage) || isDiskError(errorMessage)) {
-                processExternalError();
-                return;
-            }
-
-            errorThrowTime.set(System.currentTimeMillis());
-            throw new ClientError("TDLib fatal error: " + errorMessage);
-        }
-
-        private void processExternalError() {
-            errorThrowTime.set(System.currentTimeMillis());
-            throw new ExternalClientError("Fatal error: " + errorMessage);
-        }
-
-
-        private boolean isDatabaseBrokenError(String message) {
-            return message.contains("Wrong key or database is corrupted") ||
-                    message.contains("SQL logic error or missing database") ||
-                    message.contains("database disk image is malformed") ||
-                    message.contains("file is encrypted or is not a database") ||
-                    message.contains("unsupported file format") ||
-                    message.contains("Database was corrupted and deleted during execution and can't be recreated");
-        }
-
-        private boolean isDiskFullError(String message) {
-            return message.contains("PosixError : No space left on device") ||
-                    message.contains("database or disk is full");
-        }
-
-        private boolean isDiskError(String message) {
-            return message.contains("I/O error") || message.contains("Structure needs cleaning");
-        }
-    }
-	
-    private static final class ClientError extends Error {
-        private ClientError(String message) {
-            super(message);
-        }
-    }
-
-    private static final class ExternalClientError extends Error {
-        public ExternalClientError(String message) {
-            super(message);
-        }
-    }
 }

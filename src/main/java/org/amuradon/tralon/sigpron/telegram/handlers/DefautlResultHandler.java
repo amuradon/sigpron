@@ -16,7 +16,9 @@ public class DefautlResultHandler implements TelegramClient.ResultHandler {
             	LOGGER.error("Receive an error: \n{}", object);
                 break;
             case TdApi.Ok.CONSTRUCTOR:
-            	LOGGER.debug(object.toString());
+            	if (LOGGER.isDebugEnabled()) {
+            		LOGGER.debug(object.toString());
+            	}
                 break;
             default:
             	LOGGER.info("Receive response from TDLib:\n{}", object);

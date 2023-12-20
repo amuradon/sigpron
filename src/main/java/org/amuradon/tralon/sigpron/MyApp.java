@@ -1,9 +1,12 @@
 package org.amuradon.tralon.sigpron;
 
 import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.amuradon.tralon.sigpron.secrets.SecretsManager;
 import org.amuradon.tralon.sigpron.telegram.TelegramClient;
+import org.amuradon.tralon.sigpron.telegram.handlers.NewMessageHandler;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.drinkless.tdlib.TdApi.UpdateNewMessage;
@@ -26,18 +29,5 @@ public class MyApp {
         client.login();
 
 	}
-	
-	private static class NewMessageHandler implements TelegramClient.ResultHandler {
-        @Override
-        public void onResult(TdApi.Object object, TelegramClient client) {
-        	LOGGER.debug(object.getClass().getSimpleName());
-            switch (object.getConstructor()) {
-                case TdApi.UpdateNewMessage.CONSTRUCTOR:
-                	TdApi.UpdateNewMessage message = (UpdateNewMessage) object; 
-                	System.out.println(message);
-
-            }
-        }
-    }
 	
 }

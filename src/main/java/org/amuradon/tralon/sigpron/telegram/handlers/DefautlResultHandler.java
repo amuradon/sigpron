@@ -1,6 +1,6 @@
-package org.amuradon.sigpron.telegram.handlers;
+package org.amuradon.tralon.sigpron.telegram.handlers;
 
-import org.amuradon.sigpron.telegram.TelegramClient;
+import org.amuradon.tralon.sigpron.telegram.TelegramClient;
 import org.drinkless.tdlib.TdApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

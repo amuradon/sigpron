@@ -1,4 +1,4 @@
-package org.amuradon.sigpron.telegram.handlers;
+package org.amuradon.tralon.sigpron.telegram.handlers;
 
 import java.util.concurrent.atomic.AtomicLong;
 

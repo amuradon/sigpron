@@ -18,7 +18,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.amuradon.sigpron.telegram.TelegramClient;
+import org.amuradon.tralon.sigpron.secrets.SecretsManager;
+import org.amuradon.tralon.sigpron.telegram.TelegramClient;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
@@ -162,7 +163,7 @@ public final class Example {
             case TdApi.AuthorizationStateClosed.CONSTRUCTOR:
                 print("Closed");
                 if (!needQuit) {
-                    client = new TelegramClient(Collections.singletonList(new UpdateHandler())); // recreate client after previous has closed
+                    client = new TelegramClient(Collections.singletonList(new UpdateHandler()), new SecretsManager().getTelegramSecret()); // recreate client after previous has closed
                 } else {
                     canQuit = true;
                 }
@@ -300,8 +301,10 @@ public final class Example {
     public static void main(String[] args) throws InterruptedException {
         Client.configureTdlibLogging();
 
+        SecretsManager secretsManager = new SecretsManager();
+
         // create client
-        client = new TelegramClient(Collections.singletonList(new UpdateHandler()));
+        client = new TelegramClient(Collections.singletonList(new UpdateHandler()), secretsManager.getTelegramSecret());
 
         // main loop
         while (!needQuit) {

@@ -32,6 +32,7 @@ public class AppLifecycleBean {
 	
 	void onStartup(@Observes StartupEvent event) {
 		LOGGER.info("Sigpron is starting...");
+		LOGGER.info("Working directory: {}", System.getProperty("user.dir"));
 		
 		LOGGER.debug("Telegram client login");
         client.login();

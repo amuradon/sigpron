@@ -13,6 +13,14 @@
 
 	<dependencyManagement>
 		<dependencies>
+			<!-- AWS SDK BOM needs to be first as Quarkus have AWS SDK libs as well but at lower versions -->
+			<dependency>
+				<groupId>software.amazon.awssdk</groupId>
+				<artifactId>bom</artifactId>
+				<version>2.22.8</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 			<dependency>
 				<groupId>io.quarkus.platform</groupId>
 				<artifactId>quarkus-bom</artifactId>
@@ -33,13 +41,6 @@
 				<version>${quarkus.platform.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
-			</dependency>
-
-
-			<dependency>
-				<groupId>software.amazon.awssdk</groupId>
-				<artifactId>secretsmanager</artifactId>
-				<version>2.22.5</version>
 			</dependency>
 
 			<dependency>
@@ -94,11 +95,6 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<version>1.4.14</version>
 		</dependency>
 
 		<dependency>

@@ -55,6 +55,11 @@ public class TelegramClient {
         	throw new IllegalStateException("Login timed out.");
         }
 	}
+	
+	public void logout() {
+		send(new TdApi.LogOut());
+	}
+
 
 	/**
 	 * Sends a request to the TDLib.

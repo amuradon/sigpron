@@ -13,9 +13,12 @@ import org.drinkless.tdlib.TdApi.AuthorizationState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.ser.std.MapSerializer;
+
 public class TelegramClient {
 
 	private static final AtomicLong currentQueryId = new AtomicLong();
+	
 	
 	private int nativeClientId;
 
@@ -24,6 +27,7 @@ public class TelegramClient {
 	private final TelegramSecret secret;
 
 	private boolean logged;
+	
 	
 	public TelegramClient(List<ResultHandler> updateHandlers, TelegramSecret secret) {
         this.updateHandlers = new ArrayList<>();
@@ -109,12 +113,23 @@ public class TelegramClient {
 		
 		private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationHandler.class);
 		
+		private final MessageIds messageIds;
+		
+		public AuthorizationHandler() {
+			messageIds = new MessageIds();
+		}
+		
 	    @Override
 	    public void onResult(TdApi.Object object, TelegramClient client) {
-	    	 if (object.getConstructor() != TdApi.UpdateAuthorizationState.CONSTRUCTOR) {
+	    	if (LOGGER.isTraceEnabled()) {
+	    		LOGGER.trace("Received message '{}'", messageIds.getName(object.getConstructor()));
+	    	}
+	    	
+	    	if (object.getConstructor() != TdApi.UpdateAuthorizationState.CONSTRUCTOR) {
 	             return;
-	    	 }
+	    	}
 
+	    	// TODO send messages and inputs for Telegram API authentication to Bot
 	    	AuthorizationState authorizationState = ((TdApi.UpdateAuthorizationState) object).authorizationState;
 	    	switch (authorizationState.getConstructor()) {
 				case TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR:
@@ -147,7 +162,9 @@ public class TelegramClient {
 					LOGGER.info("Closed");
 					break;
 				default:
-					LOGGER.debug("Message {} not processed by this handler", object.getConstructor());
+					LOGGER.debug("Message {} - {} not processed by this handler",
+							messageIds.getName(object.getConstructor()),
+							messageIds.getName(authorizationState.getConstructor()));
 			}
 	    }
 	}

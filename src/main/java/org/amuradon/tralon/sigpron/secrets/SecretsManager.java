@@ -32,7 +32,7 @@ public class SecretsManager {
 	    try {
 	    	GetSecretValueResponse getSecretValueResponse = client.getSecretValue(getSecretValueRequest);
 			JsonNode node = mapper.readTree(getSecretValueResponse.secretString());
-			return new TelegramSecret(node.path("apiId").asInt(), node.path("apiHash").asText());
+			return new TelegramSecret(node.path("apiId").asInt(), node.path("apiHash").asText(), node.path("botAuthToken").asText());
 		} catch (Exception e) {
 			throw new IllegalStateException("Secret could not be loaded.", e);
 		}

@@ -1,6 +1,10 @@
 package org.amuradon.tralon.sigpron;
 
+import java.lang.reflect.AccessFlag;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,6 +70,21 @@ public class GetChatList {
         client.send(new TdApi.GetChatHistory(1001338521686L, 0, 0, 20, true), new NewMessageHandler());
         
         Thread.sleep(10000);
+	}
+	
+	@Test
+	public void getMessageIds() {
+		List<String> list = new ArrayList<>();
+		for(Class<?> clazz : TdApi.class.getClasses()) {
+			if (!clazz.accessFlags().contains(AccessFlag.ABSTRACT)) {
+				try {
+					System.out.println(clazz.getSimpleName() + "=" + clazz.getField("CONSTRUCTOR").getInt(null));
+				} catch (Exception e) {
+					list.add(clazz.getSimpleName());
+				}
+			}
+		}
+		System.out.println("Not supported: " + list);
 	}
 	
 }

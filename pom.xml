@@ -86,6 +86,10 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.camel.quarkus</groupId>
+			<artifactId>camel-quarkus-bean</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.quarkus</groupId>
 			<artifactId>camel-quarkus-telegram</artifactId>
 		</dependency>
 

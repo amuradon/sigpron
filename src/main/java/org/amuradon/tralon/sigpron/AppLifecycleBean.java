@@ -25,17 +25,12 @@ public class AppLifecycleBean {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AppLifecycleBean.class);
 	
 	private final SecretsManager secretsManager;
-//	private final TelegramClient client;
+	private final TelegramClient telegramClient;
 	
 	@Inject
-	public AppLifecycleBean() {
-		// TODO make Telegram client as managed bean, as of now I post-poning as using it "unit test" to get chat list
-		Client.configureTdlibLogging();
-		secretsManager = new SecretsManager();
-		TelegramSecret secrets = secretsManager.getTelegramSecret();
-		System.out.println(secrets);
-		// TODO enable Telegram API
-//		this.client = new TelegramClient(Arrays.asList(new NewMessageHandler()), secretsManager.getTelegramSecret());
+	public AppLifecycleBean(TelegramClient telegramClient, SecretsManager secretsManager) {
+		this.secretsManager  = secretsManager;
+		this.telegramClient = telegramClient;
 	}
 	
 	void onStartup(@Observes StartupEvent event) {
@@ -43,7 +38,7 @@ public class AppLifecycleBean {
 		LOGGER.info("Working directory: {}", System.getProperty("user.dir"));
 		
 		LOGGER.debug("Telegram client login");
-//        client.login();
+		telegramClient.login();
 
 	}
 
@@ -51,14 +46,14 @@ public class AppLifecycleBean {
 		LOGGER.info("Sigpron is shutting down...");
 		
 		LOGGER.debug("Telegram client logout");
-//		client.logout();
+		telegramClient.logout();
 	}
 	
 	public void onComponentAdd(@Observes ComponentAddEvent event) {
         if (event.getComponent() instanceof TelegramComponent) {
             /* Perform some custom configuration of the component */
         	TelegramComponent component = event.getComponent(TelegramComponent.class);
-        	component.setAuthorizationToken(secretsManager.getTelegramSecret().botAuthToken());
+        	component.setAuthorizationToken(secretsManager.telegram().botAuthToken());
         }
     }
 }

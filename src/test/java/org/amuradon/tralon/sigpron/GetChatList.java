@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 
 import org.amuradon.tralon.sigpron.secrets.SecretsManager;
 import org.amuradon.tralon.sigpron.telegram.TelegramClient;
+import org.amuradon.tralon.sigpron.telegram.handlers.NewMessageHandler;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.drinkless.tdlib.TdApi.UpdateNewMessage;
@@ -27,7 +28,7 @@ public class GetChatList {
 		Client.configureTdlibLogging();
 		
 		SecretsManager secretsManager = new SecretsManager();
-		TelegramClient client = new TelegramClient(Collections.singletonList(new NewMessageHandler()), secretsManager.getTelegramSecret());
+		TelegramClient client = new TelegramClient(secretsManager, null);
 		client.login();
 		
         // send LoadChats request if there are some unknown chats and have not enough known chats
@@ -50,20 +51,13 @@ public class GetChatList {
         Thread.sleep(10000);
 	}
 	
-	private static class NewMessageHandler implements TelegramClient.ResultHandler {
-        @Override
-        public void onResult(TdApi.Object object, TelegramClient client) {
-        	LOGGER.info(object.toString());
-        }
-    }
-	
 	@Test
 	public void getChatHistory() throws InterruptedException {
         
 		Client.configureTdlibLogging();
 		
 		SecretsManager secretsManager = new SecretsManager();
-		TelegramClient client = new TelegramClient(Collections.singletonList(new NewMessageHandler()), secretsManager.getTelegramSecret());
+		TelegramClient client = new TelegramClient(secretsManager, null);
 		client.login();
 		
         // send LoadChats request if there are some unknown chats and have not enough known chats

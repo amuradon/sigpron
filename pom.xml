@@ -13,7 +13,8 @@
 
 	<dependencyManagement>
 		<dependencies>
-			<!-- AWS SDK BOM needs to be first as Quarkus have AWS SDK libs as well but at lower versions -->
+			<!-- AWS SDK BOM needs to be first as Quarkus have AWS SDK libs as
+			well but at lower versions -->
 			<dependency>
 				<groupId>software.amazon.awssdk</groupId>
 				<artifactId>bom</artifactId>
@@ -77,9 +78,19 @@
 			<groupId>io.quarkus</groupId>
 			<artifactId>quarkus-arc</artifactId>
 		</dependency>
+		
+		<!-- Camel -->
 		<dependency>
 			<groupId>org.apache.camel.quarkus</groupId>
 			<artifactId>camel-quarkus-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.quarkus</groupId>
+			<artifactId>camel-quarkus-bean</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.quarkus</groupId>
+			<artifactId>camel-quarkus-telegram</artifactId>
 		</dependency>
 
 		<dependency>

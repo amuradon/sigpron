@@ -1,35 +1,51 @@
 package org.amuradon.tralon.sigpron.telegram;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.amuradon.tralon.sigpron.secrets.SecretsManager;
 import org.amuradon.tralon.sigpron.telegram.handlers.DefautlResultHandler;
+import org.amuradon.tralon.sigpron.telegram.handlers.NewMessageHandler;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.drinkless.tdlib.TdApi.AuthorizationState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+@ApplicationScoped
 public class TelegramClient {
 
 	private static final AtomicLong currentQueryId = new AtomicLong();
+	
 	
 	private int nativeClientId;
 
 	private final List<ResultHandler> updateHandlers;
 	private final ConcurrentHashMap<Long, ResultHandler> handlers;
-	private final TelegramSecret secret;
+	private final SecretsManager secretsManager;
+	
+	private final TelegramBot bot;
 
 	private boolean logged;
 	
-	public TelegramClient(List<ResultHandler> updateHandlers, TelegramSecret secret) {
+	@Inject
+	public TelegramClient(SecretsManager secretsManager, TelegramBot bot) {
+		this.secretsManager = secretsManager;
+		this.bot = bot;
+
+		Client.configureTdlibLogging();
         this.updateHandlers = new ArrayList<>();
         this.updateHandlers.add(new AuthorizationHandler());
-        this.updateHandlers.addAll(updateHandlers);
-        this.secret = secret;
+        this.updateHandlers.add(new NewMessageHandler());
         handlers = new ConcurrentHashMap<>();
     }
 	
@@ -43,7 +59,7 @@ public class TelegramClient {
         send(new TdApi.GetOption("version"));
         
         long loginStart = System.currentTimeMillis();
-        while (!logged && System.currentTimeMillis() - loginStart <= 10000) {
+        while (!logged && System.currentTimeMillis() - loginStart <= 60000) {
         	try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
@@ -109,11 +125,21 @@ public class TelegramClient {
 		
 		private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationHandler.class);
 		
+		private final MessageIds messageIds;
+		
+		public AuthorizationHandler() {
+			messageIds = new MessageIds();
+		}
+		
 	    @Override
 	    public void onResult(TdApi.Object object, TelegramClient client) {
-	    	 if (object.getConstructor() != TdApi.UpdateAuthorizationState.CONSTRUCTOR) {
+	    	if (LOGGER.isTraceEnabled()) {
+	    		LOGGER.trace("Received message '{}'", messageIds.getName(object.getConstructor()));
+	    	}
+	    	
+	    	if (object.getConstructor() != TdApi.UpdateAuthorizationState.CONSTRUCTOR) {
 	             return;
-	    	 }
+	    	}
 
 	    	AuthorizationState authorizationState = ((TdApi.UpdateAuthorizationState) object).authorizationState;
 	    	switch (authorizationState.getConstructor()) {
@@ -123,8 +149,8 @@ public class TelegramClient {
 					request.databaseDirectory = "tdlib";
 					request.useMessageDatabase = false;
 					request.useSecretChats = false;
-					request.apiId = client.secret.apiId();
-					request.apiHash = client.secret.apiHash();
+					request.apiId = client.secretsManager.telegram().apiId();
+					request.apiHash = client.secretsManager.telegram().apiHash();
 					request.systemLanguageCode = "en";
 					request.deviceModel = "Desktop";
 					request.applicationVersion = "1.0";
@@ -133,6 +159,46 @@ public class TelegramClient {
 					client.send(request, new DefautlResultHandler());
 					
 					break;
+				case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR:
+					LOGGER.debug("Sending phone number...");
+	                client.send(new TdApi.SetAuthenticationPhoneNumber(client.secretsManager.user().phoneNumber(), null));
+	                break;
+				case TdApi.AuthorizationStateWaitEmailAddress.CONSTRUCTOR:
+					LOGGER.debug("Sending email...");
+	                client.send(new TdApi.SetAuthenticationEmailAddress(client.secretsManager.user().email()));
+	                break;
+				case TdApi.AuthorizationStateWaitOtherDeviceConfirmation.CONSTRUCTOR: {
+	                String link = ((TdApi.AuthorizationStateWaitOtherDeviceConfirmation) authorizationState).link;
+	                client.bot.sendMessage("Please confirm this login link on another device: " + link);
+	                break;
+	            }
+	            case TdApi.AuthorizationStateWaitEmailCode.CONSTRUCTOR: {
+	            	client.bot.sendMessage("Please enter email authentication code");
+	            	client.bot.setCallback(m -> client.send(new TdApi.CheckAuthenticationEmailCode(new TdApi.EmailAddressAuthenticationCode(m))));
+	                break;
+	            }
+	            case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR: {
+	            	String code = promptString("Please enter authentication code: ");
+	                client.send(new TdApi.CheckAuthenticationCode(code));
+	                break;
+	                // TODO this does not seem to work as Telegram can recognized sent code and expire it
+//	            	client.bot.sendMessage("Please enter authentication code");
+//	            	client.bot.setCallback(m -> client.send(new TdApi.CheckAuthenticationCode(m)));
+//	                break;
+	            }
+	            case TdApi.AuthorizationStateWaitRegistration.CONSTRUCTOR: {
+	            	client.bot.sendMessage("Please enter your first and last name");
+	            	client.bot.setCallback(m -> {
+	            		String[] name = m.split(" ");
+						client.send(new TdApi.RegisterUser(name[0], name[1]));
+	            	});
+	                break;
+	            }
+	            case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR: {
+	            	client.bot.sendMessage("Please enter password");
+	            	client.bot.setCallback(m -> client.send(new TdApi.CheckAuthenticationPassword(m)));
+	                break;
+	            }
 				case TdApi.AuthorizationStateReady.CONSTRUCTOR:
 					LOGGER.info("Logged successfully");
 					client.logged = true;
@@ -147,10 +213,24 @@ public class TelegramClient {
 					LOGGER.info("Closed");
 					break;
 				default:
-					LOGGER.debug("Message {} not processed by this handler", object.getConstructor());
+					LOGGER.debug("Message {} - {} not processed by this handler",
+							messageIds.getName(object.getConstructor()),
+							messageIds.getName(authorizationState.getConstructor()));
 			}
 	    }
 	}
+	
+	private static String promptString(String prompt) {
+        System.out.print(prompt);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        String str = "";
+        try {
+            str = reader.readLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return str;
+    }
 
 	private static class ResponseReceiver implements Runnable {
 

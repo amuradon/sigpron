@@ -9,6 +9,7 @@ package org.drinkless.tdlib.example;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -19,7 +20,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.amuradon.tralon.sigpron.secrets.SecretsManager;
-import org.amuradon.tralon.sigpron.telegram.TelegramClient;
+import org.amuradon.tralon.sigpron.telegram.TelegramClient.ResultHandler;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
@@ -34,7 +35,7 @@ public final class Example {
     private static volatile boolean needQuit = false;
     private static volatile boolean canQuit = false;
 
-    private static final TelegramClient.ResultHandler defaultHandler = new DefaultHandler();
+    private static final ResultHandler defaultHandler = new DefaultHandler();
 
     private static final Lock authorizationLock = new ReentrantLock();
     private static final Condition gotAuthorization = authorizationLock.newCondition();
@@ -163,7 +164,7 @@ public final class Example {
             case TdApi.AuthorizationStateClosed.CONSTRUCTOR:
                 print("Closed");
                 if (!needQuit) {
-                    client = new TelegramClient(Collections.singletonList(new UpdateHandler()), new SecretsManager().getTelegramSecret()); // recreate client after previous has closed
+                    client = createClient(); // recreate client after previous has closed
                 } else {
                     canQuit = true;
                 }
@@ -172,6 +173,10 @@ public final class Example {
                 System.err.println("Unsupported authorization state:" + newLine + Example.authorizationState);
         }
     }
+
+	private static TelegramClient createClient() {
+		return new TelegramClient(Arrays.asList(new AuthorizationRequestHandler(), new UpdateHandler()));
+	}
 
     private static int toInt(String arg) {
         int result = 0;
@@ -250,9 +255,9 @@ public final class Example {
         synchronized (mainChatList) {
             if (!haveFullMainChatList && limit > mainChatList.size()) {
                 // send LoadChats request if there are some unknown chats and have not enough known chats
-                client.send(new TdApi.LoadChats(new TdApi.ChatListMain(), limit - mainChatList.size()), new TelegramClient.ResultHandler() {
+                client.send(new TdApi.LoadChats(new TdApi.ChatListMain(), limit - mainChatList.size()), new ResultHandler() {
                     @Override
-                    public void onResult(TdApi.Object object, TelegramClient client) {
+                    public void onResult(TdApi.Object object, org.amuradon.tralon.sigpron.telegram.TelegramClient client) {
                         switch (object.getConstructor()) {
                             case TdApi.Error.CONSTRUCTOR:
                                 if (((TdApi.Error) object).code == 404) {
@@ -301,10 +306,9 @@ public final class Example {
     public static void main(String[] args) throws InterruptedException {
         Client.configureTdlibLogging();
 
-        SecretsManager secretsManager = new SecretsManager();
-
         // create client
-        client = new TelegramClient(Collections.singletonList(new UpdateHandler()), secretsManager.getTelegramSecret());
+        client = createClient();
+        client.login();
 
         // main loop
         while (!needQuit) {
@@ -354,17 +358,17 @@ public final class Example {
         }
     }
 
-    private static class DefaultHandler implements TelegramClient.ResultHandler {
+    private static class DefaultHandler implements ResultHandler {
         @Override
-        public void onResult(TdApi.Object object, TelegramClient client) {
+        public void onResult(TdApi.Object object, org.amuradon.tralon.sigpron.telegram.TelegramClient client) {
             print(object.toString());
         }
+
     }
 
-    private static class UpdateHandler implements TelegramClient.ResultHandler {
+    private static class UpdateHandler implements ResultHandler {
         @Override
-        public void onResult(TdApi.Object object, TelegramClient client) {
-        	System.out.println("*** update: " + object);
+        public void onResult(TdApi.Object object, org.amuradon.tralon.sigpron.telegram.TelegramClient client) {
             switch (object.getConstructor()) {
                 case TdApi.UpdateAuthorizationState.CONSTRUCTOR:
                     onAuthorizationStateUpdated(((TdApi.UpdateAuthorizationState) object).authorizationState);
@@ -676,9 +680,9 @@ public final class Example {
         }
     }
 
-    private static class AuthorizationRequestHandler implements TelegramClient.ResultHandler {
+    private static class AuthorizationRequestHandler implements ResultHandler {
         @Override
-        public void onResult(TdApi.Object object, TelegramClient client) {
+        public void onResult(TdApi.Object object, org.amuradon.tralon.sigpron.telegram.TelegramClient client) {
             switch (object.getConstructor()) {
                 case TdApi.Error.CONSTRUCTOR:
                     System.err.println("Receive an error:" + newLine + object);

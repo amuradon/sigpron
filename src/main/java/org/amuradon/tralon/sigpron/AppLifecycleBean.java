@@ -1,20 +1,14 @@
 package org.amuradon.tralon.sigpron;
 
-import java.util.Arrays;
-
 import org.amuradon.tralon.sigpron.secrets.SecretsManager;
 import org.amuradon.tralon.sigpron.telegram.TelegramClient;
-import org.amuradon.tralon.sigpron.telegram.TelegramSecret;
-import org.amuradon.tralon.sigpron.telegram.handlers.NewMessageHandler;
 import org.apache.camel.component.telegram.TelegramComponent;
 import org.apache.camel.quarkus.core.events.ComponentAddEvent;
-import org.drinkless.tdlib.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
-import io.smallrye.config.DefaultValuesConfigSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
@@ -56,4 +50,5 @@ public class AppLifecycleBean {
         	component.setAuthorizationToken(secretsManager.telegram().botAuthToken());
         }
     }
+
 }

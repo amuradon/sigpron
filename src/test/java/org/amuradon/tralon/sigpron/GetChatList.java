@@ -27,26 +27,26 @@ public class GetChatList {
         
 		Client.configureTdlibLogging();
 		
-		SecretsManager secretsManager = new SecretsManager();
-		TelegramClient client = new TelegramClient(secretsManager, null);
-		client.login();
-		
-        // send LoadChats request if there are some unknown chats and have not enough known chats
-        client.send(new TdApi.LoadChats(new TdApi.ChatListMain(), 500), new TelegramClient.ResultHandler() {
-            @Override
-            public void onResult(TdApi.Object object, TelegramClient client) {
-                switch (object.getConstructor()) {
-                    case TdApi.Error.CONSTRUCTOR:
-                    	System.err.println(object);
-                        break;
-                    case TdApi.Ok.CONSTRUCTOR:
-                    	System.out.println(object);
-                        break;
-                    default:
-                        System.err.println("Receive wrong response from TDLib:\n" + object);
-                }
-            }
-        });
+		SecretsManager secretsManager = new SecretsManager("test");
+//		TelegramClient client = new TelegramClient(secretsManager, null);
+//		client.login();
+//		
+//        // send LoadChats request if there are some unknown chats and have not enough known chats
+//        client.send(new TdApi.LoadChats(new TdApi.ChatListMain(), 500), new TelegramClient.ResultHandler() {
+//            @Override
+//            public void onResult(TdApi.Object object, TelegramClient client) {
+//                switch (object.getConstructor()) {
+//                    case TdApi.Error.CONSTRUCTOR:
+//                    	System.err.println(object);
+//                        break;
+//                    case TdApi.Ok.CONSTRUCTOR:
+//                    	System.out.println(object);
+//                        break;
+//                    default:
+//                        System.err.println("Receive wrong response from TDLib:\n" + object);
+//                }
+//            }
+//        });
         
         Thread.sleep(10000);
 	}
@@ -56,12 +56,12 @@ public class GetChatList {
         
 		Client.configureTdlibLogging();
 		
-		SecretsManager secretsManager = new SecretsManager();
-		TelegramClient client = new TelegramClient(secretsManager, null);
-		client.login();
+		SecretsManager secretsManager = new SecretsManager("test");
+//		TelegramClient client = new TelegramClient(secretsManager, null);
+//		client.login();
 		
         // send LoadChats request if there are some unknown chats and have not enough known chats
-        client.send(new TdApi.GetChatHistory(1001338521686L, 0, 0, 20, true), new NewMessageHandler());
+//        client.send(new TdApi.GetChatHistory(1001338521686L, 0, 0, 20, true), new NewMessageHandler());
         
         Thread.sleep(10000);
 	}

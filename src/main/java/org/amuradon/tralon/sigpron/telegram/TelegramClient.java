@@ -38,14 +38,14 @@ public class TelegramClient {
 	private boolean logged;
 	
 	@Inject
-	public TelegramClient(SecretsManager secretsManager, TelegramBot bot) {
+	public TelegramClient(SecretsManager secretsManager, TelegramBot bot, NewMessageHandler newMessageHandler) {
 		this.secretsManager = secretsManager;
 		this.bot = bot;
 
 		Client.configureTdlibLogging();
         this.updateHandlers = new ArrayList<>();
         this.updateHandlers.add(new AuthorizationHandler());
-        this.updateHandlers.add(new NewMessageHandler());
+        this.updateHandlers.add(newMessageHandler);
         handlers = new ConcurrentHashMap<>();
     }
 	

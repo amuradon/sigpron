@@ -13,6 +13,7 @@ import org.drinkless.tdlib.TdApi.FormattedText;
 import org.drinkless.tdlib.TdApi.Message;
 import org.drinkless.tdlib.TdApi.MessageText;
 import org.drinkless.tdlib.TdApi.UpdateNewMessage;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,9 +34,13 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
 	
 	private final ProducerTemplate producer;
 	
+	private final long wolfxChatId;
+	
 	@Inject
-	public NewMessageHandler(final ProducerTemplate producer) {
+	public NewMessageHandler(final ProducerTemplate producer,
+			@ConfigProperty(name = "telegram.signals.wolfx") final long wolfxChatId) {
 		this.producer = producer;
+		this.wolfxChatId = wolfxChatId;
 	}
 	
     @Override
@@ -43,7 +48,8 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
         if (object.getConstructor() == TdApi.UpdateNewMessage.CONSTRUCTOR) {
         	TdApi.UpdateNewMessage event = (UpdateNewMessage) object;
         	Message message = event.message;
-    		if ((message.chatId == WOLFX_VIP || message.chatId == WOLFX_VIP_TEST)
+        	// TODO not process old messages!
+    		if ((message.chatId == wolfxChatId)
     				&& message.content.getConstructor() == MessageText.CONSTRUCTOR) {
     			LOGGER.debug("Processing Wolfx signal");
 				MessageText messageText = (MessageText) message.content;

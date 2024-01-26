@@ -22,10 +22,6 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 //			.process(e -> e.getMessage().setBody(e.getMessage().getBody() + "echoed"))
 //			.to("telegram:bots");
 		
-		from(SEDA_SIGNAL_RECEIVED)
-			.to("log:messageBus?level=DEBUG")
-			.bean(BinanceFutures.BEAN_NAME, "processSignal");
-		
 		// Reconnect every 24 hours
 		// Handle events - closed, expired....
 		// Handle user data events
@@ -34,7 +30,6 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		from("timer:keepAlive?delay=360000&fixedRate=true&period=360000")
 			.bean(BinanceFutures.BEAN_NAME, "extendListenKey");
 		
-		// The route can't be autostarted, the POST listenKey has to happen first
 		from(SEDA_BINANCE_USER_DATA_RECEIVED)
 			.multicast()
 			.to("telegram:bots")

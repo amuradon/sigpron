@@ -26,6 +26,11 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		// Handle events - closed, expired....
 		// Handle user data events
 		
+		from(SEDA_SIGNAL_RECEIVED)
+			.setHeader("BalancePercentage", constant(10))
+			.to("log:messageBus?level=DEBUG")
+			.bean(BinanceFutures.BEAN_NAME, "processSignal");
+		
 		// Every 60 minutes ping listen key to keep alive, required by Binance
 		from("timer:keepAlive?delay=360000&fixedRate=true&period=360000")
 			.bean(BinanceFutures.BEAN_NAME, "extendListenKey");

@@ -28,10 +28,6 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
 	private static final String WOLFX_PATTERN = "((\\w+)\\/(\\w+)).*(BUY|SELL)\\n+.*above:\\s+(\\d+\\.\\d+).*of\\s+(\\d+\\.\\d+).*\\n+"
 			+ ".*TP1\\s+(\\d+\\.\\d+)\\n+.*TP2\\s+(\\d+\\.\\d+)\\n+.*TP3\\s+(\\d+\\.\\d+)\\n+.*SL\\s+(\\d+\\.\\d+)\\n+.*Leverage\\s+(\\d+)x";
 	
-	private static final long WOLFX_VIP = -1001338521686L;
-	
-	private static final long WOLFX_VIP_TEST = -791024550L;
-	
 	private final ProducerTemplate producer;
 	
 	private final long wolfxChatId;

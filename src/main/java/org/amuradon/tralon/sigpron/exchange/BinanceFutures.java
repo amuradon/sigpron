@@ -1,8 +1,14 @@
 package org.amuradon.tralon.sigpron.exchange;
 
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.amuradon.tralon.sigpron.MyRouteBuilder;
 import org.amuradon.tralon.sigpron.Side;
@@ -19,6 +25,7 @@ import com.binance.connector.futures.client.WebsocketClient;
 import com.binance.connector.futures.client.impl.UMFuturesClientImpl;
 import com.binance.connector.futures.client.impl.UMWebsocketClientImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -34,6 +41,10 @@ import jakarta.inject.Singleton;
 @RegisterForReflection
 public class BinanceFutures {
 	
+	private static final String TRADING_STATUS = "TRADING";
+
+	private static final String MARGIN_TYPE = "ISOLATED";
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(BinanceFutures.class);
 
 	public static final String BEAN_NAME = "binanceFutures";
@@ -46,6 +57,10 @@ public class BinanceFutures {
 	
 	private final ProducerTemplate producer;
 	
+	private final Map<String, Position> positions;
+	
+	private Map<String, Symbol> exchangeInfo;
+	
 	@Inject
 	public BinanceFutures(final SecretsManager secretsManager,
 			@ConfigProperty(name = "binance.futures.http.host") String httpHost,
@@ -55,8 +70,9 @@ public class BinanceFutures {
 		futuresClient = new UMFuturesClientImpl(secretsManager.binanceFutures().apiKey(),
 				secretsManager.binanceFutures().apiSecret(), "https://" + httpHost);
 		websocketClient = new UMWebsocketClientImpl("wss://" + websocketHost);
+		positions = new HashMap<>();
 	}
-
+	
 	public void processSignal(@Header("BalancePercentage") double balancePercentage, @Body Signal signal) {
 		LOGGER.info("Processing signal {}", signal);
 		
@@ -81,40 +97,97 @@ public class BinanceFutures {
 			throw new IllegalStateException("JSON parsing issue", e);
 		}
 		
-		double orderAmount = availableBalance * (balancePercentage / 100.0);
+		double quantity = availableBalance * (balancePercentage / 100.0);
 		LOGGER.debug("Available balance: {} USDT", availableBalance);
 		LOGGER.debug("Balance percentage: {}", balancePercentage);
-		LOGGER.debug("Using: {} USDT", orderAmount);
+		LOGGER.debug("Aiming for: {} USDT", quantity);
 		
 		final String symbol = signal.symbol().replace("/", "");
-		futuresClient.account().changeMarginType(params()
-				.put("symbol", symbol)
-				.put("marginType", "ISOLATED")
-				.build());
 		
-		futuresClient.account().changeInitialLeverage(params()
-				.put("symbol", symbol)
-				.put("leverage", signal.leverage())
-				.build());
+		Position position = positions.get(symbol);
+		if (position == null) {
+			LOGGER.error("No information for position {}. Skip processing", position);
+			return;
+		}
+
+		Symbol symbolInfo = exchangeInfo.get(symbol);
+		if (!symbolInfo.status.equalsIgnoreCase(TRADING_STATUS)) {
+			LOGGER.error("The symbol {} is not in status {} but {}", symbol, TRADING_STATUS, symbolInfo.status);
+			return;
+		}
+		
+		LOGGER.debug("Processing symbol {} with position {}", symbol, position);
+		if (!MARGIN_TYPE.equalsIgnoreCase(position.marginType())) {
+			LOGGER.debug("Changing margin type of {} from {} to {}", symbol, position.marginType(), MARGIN_TYPE);
+			futuresClient.account().changeMarginType(params()
+					.put("symbol", symbol)
+					.put("marginType", MARGIN_TYPE)
+					.build());
+		}
+		
+		if (signal.leverage() != position.leverage()) {
+			LOGGER.debug("Changing leverage of {} from {} to {}", symbol, position.leverage(), signal.leverage());
+			futuresClient.account().changeInitialLeverage(params()
+					.put("symbol", symbol)
+					.put("leverage", signal.leverage())
+					.build());
+		}
+		
+		
+		if (symbolInfo.orderTypes.contains("MARKET")) {
+			Map<String, Object> marketLotSize = symbolInfo.filterMapping.get("MARKET_LOT_SIZE");
+			Map<String, Object> lotSize = symbolInfo.filterMapping.get("LOT_SIZE");
+			double maxQty = Double.min(Double.parseDouble(marketLotSize.get("maxQty").toString()), Double.parseDouble(lotSize.get("maxQty").toString()));
+			double minQty = Double.max(Double.parseDouble(marketLotSize.get("minQty").toString()), Double.parseDouble(lotSize.get("minQty").toString()));
+			
+			if (quantity < minQty) {
+				LOGGER.error("Requested quantity {} is lesser than minimum {}", quantity, minQty);
+				return;
+			}
+			
+			double originalQuantity = quantity;
+			quantity = Double.min(maxQty, originalQuantity);
+			LOGGER.debug("Aiming for: {}, resolved to: {}", originalQuantity, quantity);
+		}
 		
 		// XXX create order - does not work yet
+		// {"code":-2027,"msg":"Exceeded the maximum allowable position at current leverage."}
 		futuresClient.account().newOrder(params()
 				.put("symbol", symbol)
 				.put("side", signal.side().name())
 				.put("type", "MARKET")
-				.put("quantity", orderAmount)
+				.put("quantity", quantity)
 				.put("newOrderRespType", "RESULT")
 				.build());
+		
 	}
 	
 	@PostConstruct
-	public void createListenKey() {
-		String result = futuresClient.userData().createListenKey();
-		LOGGER.debug("Listening user stream");
+	public void initialize() {
 		try {
+			// Create listen key
+			String result = futuresClient.userData().createListenKey();
+			LOGGER.debug("Listening user stream");
 			websocketClient.listenUserStream(mapper.readTree(result).get("listenKey").asText(),
 					data -> producer.asyncSendBody(MyRouteBuilder.SEDA_BINANCE_USER_DATA_RECEIVED, data));
-		} catch (JsonProcessingException e) {
+
+			// Get position mapping
+			String posInfoResponse = futuresClient.account().positionInformation(params().build());
+			Position[] positionArray =
+					mapper.readValue(posInfoResponse, mapper.getTypeFactory().constructArrayType(Position.class));
+			for (Position position : positionArray) {
+				positions.put(position.symbol(), position);
+			}
+		
+			// Get exchange info
+			String echangeInfoResponse = futuresClient.market().exchangeInfo();
+			Symbol[] symbols = mapper.readValue(mapper.readTree(echangeInfoResponse).get("symbols").traverse(),
+					mapper.getTypeFactory().constructArrayType(Symbol.class));
+			exchangeInfo = Arrays.stream(symbols)
+					.filter(s -> s.contractType.equalsIgnoreCase("PERPETUAL"))
+					.collect(Collectors.<Symbol, String, Symbol>toMap(s -> s.symbol, s -> s));
+		
+		} catch (IOException e) {
 			throw new IllegalStateException("JSON parsing issue", e);
 		}
 	}

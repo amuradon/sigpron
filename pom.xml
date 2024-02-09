@@ -44,12 +44,6 @@
 				<scope>import</scope>
 			</dependency>
 
-			<dependency>
-				<groupId>com.fasterxml.jackson.core</groupId>
-				<artifactId>jackson-databind</artifactId>
-				<version>2.16.1</version>
-			</dependency>
-
 			<!-- Required for Binance connector, it seems something is managing
 			older versions of those below -->
 			<dependency>
@@ -93,6 +87,10 @@
 			<groupId>io.quarkus</groupId>
 			<artifactId>quarkus-arc</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-jackson</artifactId>
+		</dependency>
 
 		<!-- Camel -->
 		<dependency>
@@ -119,19 +117,10 @@
 			<groupId>org.apache.camel.quarkus</groupId>
 			<artifactId>camel-quarkus-timer</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.camel.quarkus</groupId>
-			<artifactId>camel-quarkus-xml-io-dsl</artifactId>
-		</dependency>
 
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>secretsmanager</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
 		</dependency>
 
 		<dependency>

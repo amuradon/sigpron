@@ -76,7 +76,7 @@ public class BinanceFutures {
 	public void processSignal(@Header("BalancePercentage") double balancePercentage, @Body Signal signal) {
 		LOGGER.info("Processing signal {}", signal);
 		
-		// TODO process SELL signals as well, ignore for now as I don't understand them
+		// TODO process SELL signals as well
 		if (signal.side() == Side.SELL) {
 			return;
 		}
@@ -150,13 +150,17 @@ public class BinanceFutures {
 			LOGGER.debug("Aiming for: {}, resolved to: {}", originalQuantity, quantity);
 		}
 		
+		// TODO Get actual price and compare to requested
+		
 		// XXX create order - does not work yet
 		// {"code":-2027,"msg":"Exceeded the maximum allowable position at current leverage."}
 		futuresClient.account().newOrder(params()
 				.put("symbol", symbol)
 				.put("side", signal.side().name())
-				.put("type", "MARKET")
-				.put("quantity", quantity)
+				.put("type", "TAKE_PROFIT")
+				.put("quantity", 0.1)
+				.put("price", signal.price())
+				.put("stopPrice", signal.stopPrice())
 				.put("newOrderRespType", "RESULT")
 				.build());
 		

@@ -8,12 +8,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class MyRouteBuilder extends EndpointRouteBuilder {
 
-	// TODO chatId as variable? Different for environments? PROD vs TEST?
+	// The chat ID is my user ID receiving message from TEST or PROD bot depending on bot's auth 
 	public static final String TELEGRAM_BOT = "telegram:bots?chatId=2103542318";
 	
 	public static final String SEDA_SIGNAL_RECEIVED = "seda:signalReceived";
 	
 	public static final String SEDA_BINANCE_USER_DATA_RECEIVED = "seda:binanceUserDataReceived";
+	
+	
 	
 	@Override
 	public void configure() throws Exception {
@@ -37,7 +39,7 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		
 		from(SEDA_BINANCE_USER_DATA_RECEIVED)
 			.multicast()
-			.to("telegram:bots")
+			.to("telegram:bots?chatId=2103542318")
 			.log("*** User Data Stream ${body}");
 			// TODO publish to analytics - Elasticsearch, OpenSearch...
 	}

@@ -152,15 +152,19 @@ public class BinanceFutures {
 		
 		// TODO Get actual price and compare to requested
 		
-		// XXX create order - does not work yet
-		// {"code":-2027,"msg":"Exceeded the maximum allowable position at current leverage."}
+		// TODO to emulate Wolfx / Cornix for TP2 for BUY
+		// - create STOP BUY >= stopPrice then once executed
+		// - create 50% A TAKE_PROFIT SELL >= stopPrice TP1 or just LIMIT SELL (Cornix) ?
+		// - create 50% B TAKE_PROFIT SELL >= stopPrice TP2 or just LIMIT SELL (Cornix) ?
+		// - create SL1 100% STOP LIMIT SELL <= stopPrice
+		// - once A executed, cancel SL1
+		// - create SL2 50% STOP LIMIT SELL <= stopPrice
+		// - once B executed, cancel SL2 
 		futuresClient.account().newOrder(params()
 				.put("symbol", symbol)
 				.put("side", signal.side().name())
-				.put("type", "TAKE_PROFIT")
+				.put("type", "MARKET")
 				.put("quantity", 0.1)
-				.put("price", signal.price())
-				.put("stopPrice", signal.stopPrice())
 				.put("newOrderRespType", "RESULT")
 				.build());
 		

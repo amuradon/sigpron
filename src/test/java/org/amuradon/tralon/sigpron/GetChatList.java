@@ -84,7 +84,7 @@ public class GetChatList {
 	private static final class NoopNewMessageHandler extends NewMessageHandler {
 
 		public NoopNewMessageHandler() {
-			super(null, 0);
+			super(null, 0, 0);
 		}
 		
 		@Override

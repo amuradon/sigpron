@@ -1,10 +1,6 @@
 package org.amuradon.tralon.sigpron.telegram.handlers;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.amuradon.tralon.sigpron.MyRouteBuilder;
-import org.amuradon.tralon.sigpron.Side;
 import org.amuradon.tralon.sigpron.Signal;
 import org.amuradon.tralon.sigpron.telegram.TelegramClient;
 import org.apache.camel.ProducerTemplate;
@@ -25,18 +21,19 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(NewMessageHandler.class);
 	
-	private static final String WOLFX_PATTERN = "((\\w+)\\/(\\w+)).*(BUY|SELL)\\n+.*above:\\s+(\\d+\\.\\d+).*of\\s+(\\d+\\.\\d+).*\\n+"
-			+ ".*TP1\\s+(\\d+\\.\\d+)\\n+.*TP2\\s+(\\d+\\.\\d+)\\n+.*TP3\\s+(\\d+\\.\\d+)\\n+.*SL\\s+(\\d+\\.\\d+)\\n+.*Leverage\\s+(\\d+)x";
-	
 	private final ProducerTemplate producer;
 	
 	private final long wolfxChatId;
 	
+	private final long moneyTeamChatId;
+	
 	@Inject
 	public NewMessageHandler(final ProducerTemplate producer,
-			@ConfigProperty(name = "telegram.signals.wolfx") final long wolfxChatId) {
+			@ConfigProperty(name = "telegram.signals.wolfx") final long wolfxChatId,
+			@ConfigProperty(name = "telegram.signals.moneyteam") final long moneyTeamChatId) {
 		this.producer = producer;
 		this.wolfxChatId = wolfxChatId;
+		this.moneyTeamChatId = moneyTeamChatId;
 	}
 	
     @Override
@@ -45,34 +42,24 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
         	TdApi.UpdateNewMessage event = (UpdateNewMessage) object;
         	Message message = event.message;
         	// TODO not process old messages!
-    		if ((message.chatId == wolfxChatId)
+    		if ((message.chatId == wolfxChatId || message.chatId == moneyTeamChatId)
     				&& message.content.getConstructor() == MessageText.CONSTRUCTOR) {
-    			LOGGER.debug("Processing Wolfx signal");
+    			
+    			SignalParser parser = SignalParser.WOLFX;
+    			
+    			if (message.chatId == moneyTeamChatId) {
+    				parser = SignalParser.MONEY_TEAM;
+    			}
+    			
+    			LOGGER.debug("Processing {} signal", parser);
 				MessageText messageText = (MessageText) message.content;
 				if (messageText.text.getConstructor() == FormattedText.CONSTRUCTOR) {
 					FormattedText formattedText = messageText.text;
-					Matcher matcher = Pattern.compile(WOLFX_PATTERN)
-							.matcher(formattedText.text);
-					if (matcher.find()) {
-						try {
-							Signal signal = new Signal(
-    								matcher.group(1),
-    								matcher.group(2),
-    								matcher.group(3),
-    								Side.valueOf(matcher.group(4).toUpperCase()),
-    								Double.parseDouble(matcher.group(5)),
-    								Double.parseDouble(matcher.group(6)),
-    								Double.parseDouble(matcher.group(7)),
-    								Double.parseDouble(matcher.group(8)),
-    								Double.parseDouble(matcher.group(9)),
-    								Double.parseDouble(matcher.group(10)),
-    								Integer.parseInt(matcher.group(11))
-    							);
-							// TODO is SEDA and asyncSend right combination?
-							producer.asyncSendBody(MyRouteBuilder.SEDA_SIGNAL_RECEIVED, signal);
-						} catch (NumberFormatException | IndexOutOfBoundsException e) {
-							LOGGER.error("Telegram message parsing failed", e);
-						}
+					Signal signal = parser.parseSignal(formattedText.text);
+					
+					if (signal != null) {
+						// TODO is SEDA and asyncSend right combination?
+						producer.asyncSendBody(MyRouteBuilder.SEDA_SIGNAL_RECEIVED, signal);
 					}
     			}
     		}

@@ -102,7 +102,7 @@ public class BinanceFutures {
 		LOGGER.debug("Balance percentage: {}", balancePercentage);
 		LOGGER.debug("Aiming for: {} USDT", quantity);
 		
-		final String symbol = signal.symbol().replace("/", "");
+		final String symbol = signal.symbol();
 		
 		Position position = positions.get(symbol);
 		if (position == null) {
@@ -168,6 +168,13 @@ public class BinanceFutures {
 				.put("newOrderRespType", "RESULT")
 				.build());
 		
+	}
+	
+	public void getMarketData(@Body Signal signal) {
+		futuresClient.market().markPriceKlines(params()
+				.put("symbol", signal.symbol())
+				.put("interval", "5m")
+				.build());
 	}
 	
 	@PostConstruct

@@ -11,5 +11,4 @@ public record Signal(String symbol,
 		double takeProfit3,
 		double stopLoss,
 		int leverage) {
-
 }

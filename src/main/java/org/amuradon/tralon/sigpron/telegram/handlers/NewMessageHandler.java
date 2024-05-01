@@ -56,7 +56,7 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
 					if (matcher.find()) {
 						try {
 							Signal signal = new Signal(
-    								matcher.group(1),
+    								matcher.group(1).replace("/", ""),
     								matcher.group(2),
     								matcher.group(3),
     								Side.valueOf(matcher.group(4).toUpperCase()),

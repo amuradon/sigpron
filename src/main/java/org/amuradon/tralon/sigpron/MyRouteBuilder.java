@@ -31,7 +31,10 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		from(SEDA_SIGNAL_RECEIVED)
 			.setHeader("BalancePercentage", constant(10))
 			.to("log:messageBus?level=DEBUG")
-			.bean(BinanceFutures.BEAN_NAME, "processSignal");
+			.multicast()
+			.bean(BinanceFutures.BEAN_NAME, "processSignal")
+			.bean(BinanceFutures.BEAN_NAME, "getMarketData");
+		
 		
 		// Every 60 minutes ping listen key to keep alive, required by Binance
 		from("timer:keepAlive?delay=360000&fixedRate=true&period=360000")

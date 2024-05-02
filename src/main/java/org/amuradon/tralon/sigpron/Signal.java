@@ -9,7 +9,11 @@ public record Signal(String symbol,
 		double takeProfit1,
 		double takeProfit2,
 		double takeProfit3,
+		double takeProfit4,
+		double takeProfit5,
+		double takeProfit6,
 		double stopLoss,
+		MarginType marginType,
 		int leverage) {
 
 }

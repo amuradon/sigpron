@@ -7,6 +7,9 @@ import org.amuradon.tralon.sigpron.MarginType;
 import org.amuradon.tralon.sigpron.Side;
 import org.amuradon.tralon.sigpron.Signal;
 
+import io.quarkus.qute.TemplateEnum;
+
+@TemplateEnum
 public enum SignalParser {
 	WOLFX {
 		@Override

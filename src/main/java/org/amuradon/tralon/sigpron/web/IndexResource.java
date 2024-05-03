@@ -8,15 +8,19 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-@Path("/")
+//@Path("/")
 public class IndexResource {
 
-	@Inject
-	Template index;
+//	private Template index;
+//	
+//	@Inject
+//	public IndexResource(final Template index) {
+//		this.index = index;
+//	}
 	
-	@GET
-	@Produces(MediaType.TEXT_HTML)
-	public TemplateInstance get() {
-		return index.data("name", "amuradon");
-	}
+//	@GET
+//	@Produces(MediaType.TEXT_HTML)
+//	public TemplateInstance get() {
+//		return index.data("name", "amuradon");
+//	}
 }

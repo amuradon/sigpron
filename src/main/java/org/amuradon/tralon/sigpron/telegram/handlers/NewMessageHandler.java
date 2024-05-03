@@ -41,7 +41,7 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
         if (object.getConstructor() == TdApi.UpdateNewMessage.CONSTRUCTOR) {
         	TdApi.UpdateNewMessage event = (UpdateNewMessage) object;
         	Message message = event.message;
-        	// TODO not process old messages!
+        	// TODO how to process old messages! E.g. after restart, downtime
     		if ((message.chatId == wolfxChatId || message.chatId == moneyTeamChatId)
     				&& message.content.getConstructor() == MessageText.CONSTRUCTOR) {
     			

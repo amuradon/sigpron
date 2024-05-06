@@ -2,22 +2,21 @@ package org.amuradon.tralon.sigpron.telegram.handlers;
 
 import org.amuradon.tralon.sigpron.MyRouteBuilder;
 import org.amuradon.tralon.sigpron.Signal;
-import org.amuradon.tralon.sigpron.telegram.TelegramClient;
 import org.apache.camel.ProducerTemplate;
-import org.drinkless.tdlib.TdApi;
-import org.drinkless.tdlib.TdApi.FormattedText;
-import org.drinkless.tdlib.TdApi.Message;
-import org.drinkless.tdlib.TdApi.MessageText;
-import org.drinkless.tdlib.TdApi.UpdateNewMessage;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import telegram4j.tl.BaseMessage;
+import telegram4j.tl.BaseUpdates;
+import telegram4j.tl.Chat;
+import telegram4j.tl.Update;
+import telegram4j.tl.UpdateNewChannelMessage;
 
 @ApplicationScoped
-public class NewMessageHandler implements TelegramClient.ResultHandler {
+public class NewMessageHandler {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(NewMessageHandler.class);
 	
@@ -36,33 +35,35 @@ public class NewMessageHandler implements TelegramClient.ResultHandler {
 		this.moneyTeamChatId = moneyTeamChatId;
 	}
 	
-    @Override
-    public void onResult(TdApi.Object object, TelegramClient client) {
-        if (object.getConstructor() == TdApi.UpdateNewMessage.CONSTRUCTOR) {
-        	TdApi.UpdateNewMessage event = (UpdateNewMessage) object;
-        	Message message = event.message;
-        	// TODO not process old messages!
-    		if ((message.chatId == wolfxChatId || message.chatId == moneyTeamChatId)
-    				&& message.content.getConstructor() == MessageText.CONSTRUCTOR) {
-    			
-    			SignalParser parser = SignalParser.WOLFX;
-    			
-    			if (message.chatId == moneyTeamChatId) {
-    				parser = SignalParser.MONEY_TEAM;
-    			}
-    			
-    			LOGGER.debug("Processing {} signal", parser);
-				MessageText messageText = (MessageText) message.content;
-				if (messageText.text.getConstructor() == FormattedText.CONSTRUCTOR) {
-					FormattedText formattedText = messageText.text;
-					Signal signal = parser.parseSignal(formattedText.text);
-					
+    public void handle(BaseUpdates updates) {
+		if (updates.chats().size() > 1) {
+			throw new IllegalStateException("There is more than one Telegram source chat for updates.\n" + updates);
+		} else if (updates.chats().isEmpty()) {
+			throw new IllegalStateException("There is no Telegram source chat for updates.\n" + updates);
+		}
+		
+		Chat chat = updates.chats().get(0);
+		if(chat.id() == wolfxChatId || chat.id() == moneyTeamChatId) {
+			
+			SignalParser parser = SignalParser.WOLFX;
+			
+			if (chat.id() == moneyTeamChatId) {
+				parser = SignalParser.MONEY_TEAM;
+			}
+
+			LOGGER.debug("Processing {} signal", parser);
+			
+			for (Update update: updates.updates()) {
+				if (update instanceof UpdateNewChannelMessage message
+						&& message.message() instanceof BaseMessage baseMessage) {
+					Signal signal = parser.parseSignal(baseMessage.message());
+		
 					if (signal != null) {
 						// TODO is SEDA and asyncSend right combination?
 						producer.asyncSendBody(MyRouteBuilder.SEDA_SIGNAL_RECEIVED, signal);
 					}
-    			}
-    		}
-        }
+				}
+			}
+		}
     }
 }

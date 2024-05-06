@@ -6,7 +6,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -25,7 +24,6 @@ import com.binance.connector.futures.client.WebsocketClient;
 import com.binance.connector.futures.client.impl.UMFuturesClientImpl;
 import com.binance.connector.futures.client.impl.UMWebsocketClientImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

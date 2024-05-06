@@ -37,6 +37,7 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		from("timer:keepAlive?delay=360000&fixedRate=true&period=360000")
 			.bean(BinanceFutures.BEAN_NAME, "extendListenKey");
 		
+		// Every 60s sync the local and server time
 		from("timer:keepAlive?delay=60000&fixedRate=true&period=360000")
 			.bean(BinanceFutures.BEAN_NAME, "syncTime");
 		

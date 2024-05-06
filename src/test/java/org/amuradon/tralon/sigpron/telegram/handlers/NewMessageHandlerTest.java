@@ -2,22 +2,27 @@ package org.amuradon.tralon.sigpron.telegram.handlers;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Collections;
 
 import org.amuradon.tralon.sigpron.MarginType;
 import org.amuradon.tralon.sigpron.Side;
 import org.amuradon.tralon.sigpron.Signal;
 import org.apache.camel.ProducerTemplate;
-import org.drinkless.tdlib.TdApi.FormattedText;
-import org.drinkless.tdlib.TdApi.Message;
-import org.drinkless.tdlib.TdApi.MessageText;
-import org.drinkless.tdlib.TdApi.UpdateNewMessage;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import telegram4j.tl.BaseMessage;
+import telegram4j.tl.BaseUpdates;
+import telegram4j.tl.Channel;
+import telegram4j.tl.UpdateNewChannelMessage;
 
 @ExtendWith(MockitoExtension.class)
 public class NewMessageHandlerTest {
@@ -72,6 +77,29 @@ public class NewMessageHandlerTest {
 	@Captor
 	private ArgumentCaptor<Signal> signalCaptor;
 	
+	@Mock
+	private BaseUpdates baseUpdatesMock;
+	
+	@Mock
+	private Channel channelMock;
+	
+	@Mock
+	private UpdateNewChannelMessage updateNewChannelMessageMock;
+	
+	@Mock
+	private BaseMessage baseMessageMock;
+	
+	private NewMessageHandler handler;
+	
+	@BeforeEach
+	public void prepare() {
+		when(baseUpdatesMock.chats()).thenReturn(Collections.singletonList(channelMock));
+		when(baseUpdatesMock.updates()).thenReturn(Collections.singletonList(updateNewChannelMessageMock));
+		when(updateNewChannelMessageMock.message()).thenReturn(baseMessageMock);
+		
+		handler = new NewMessageHandler(producerMock, 1, 2);
+	}
+	
 	@Test
 	public void testWolfxMessage() {
 		testMessage(WOLFX_MESSAGE, 1);
@@ -86,15 +114,11 @@ public class NewMessageHandlerTest {
 		Assertions.assertEquals(MarginType.CROSS, signal.marginType());
 	}
 
-	private Signal testMessage(String messageContent, int chatId) {
-		Message message = new Message();
-		message.chatId = chatId;
-		MessageText messageText = new MessageText();
-		message.content = messageText;
-		messageText.text = new FormattedText(messageContent, null);
+	private Signal testMessage(String messageContent, long chatId) {
+		when(channelMock.id()).thenReturn(chatId);
+		when(baseMessageMock.message()).thenReturn(messageContent);
 		
-		NewMessageHandler handler = new NewMessageHandler(producerMock, 1, 2);
-		handler.onResult(new UpdateNewMessage(message), null);
+		handler.handle(baseUpdatesMock);
 	
 		verify(producerMock).asyncSendBody(anyString(), signalCaptor.capture());
 		Signal signal = signalCaptor.getValue();

@@ -1,271 +1,208 @@
 package org.amuradon.tralon.sigpron.telegram;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+import java.util.Scanner;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.amuradon.tralon.sigpron.secrets.SecretsManager;
-import org.amuradon.tralon.sigpron.telegram.handlers.DefautlResultHandler;
 import org.amuradon.tralon.sigpron.telegram.handlers.NewMessageHandler;
-import org.drinkless.tdlib.Client;
-import org.drinkless.tdlib.TdApi;
-import org.drinkless.tdlib.TdApi.AuthorizationState;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import io.netty.util.ResourceLeakDetector;
+import io.netty.util.ResourceLeakDetector.Level;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import reactor.core.Disposables;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.Logger;
+import reactor.util.Loggers;
+import telegram4j.core.MTProtoTelegramClient;
+import telegram4j.core.auth.AuthorizationHandler.Resources;
+import telegram4j.core.auth.CodeAuthorizationHandler;
+import telegram4j.core.auth.CodeAuthorizationHandler.CodeAction;
+import telegram4j.core.auth.CodeAuthorizationHandler.PhoneNumberAction;
+import telegram4j.core.auth.QRAuthorizationHandler;
+import telegram4j.core.auth.TwoFactorHandler;
+import telegram4j.core.event.DefaultUpdatesManager;
+import telegram4j.core.event.DefaultUpdatesManager.Options;
+import telegram4j.core.retriever.EntityRetrievalStrategy;
+import telegram4j.core.retriever.PreferredEntityRetriever;
+import telegram4j.mtproto.DcId;
+import telegram4j.mtproto.MTProtoRetrySpec;
+import telegram4j.mtproto.MethodPredicate;
+import telegram4j.mtproto.ResponseTransformer;
+import telegram4j.tl.BaseUpdates;
+import telegram4j.tl.request.account.ImmutableUpdateStatus;
 
 @ApplicationScoped
 public class TelegramClient {
 
-	private static final AtomicLong currentQueryId = new AtomicLong();
-	
-	
-	private int nativeClientId;
+    private static final Logger log = Loggers.getLogger(TelegramClient.class);
 
-	private final List<ResultHandler> updateHandlers;
-	private final ConcurrentHashMap<Long, ResultHandler> handlers;
-	private final SecretsManager secretsManager;
-	
-	private final TelegramBot bot;
+    private final SecretsManager secretsManager;
+    
+    private final NewMessageHandler newMessageHandler;
+    
+    @Inject
+    public TelegramClient(SecretsManager secretsManager,
+    		final NewMessageHandler newMessageHandler) {
+    	this.secretsManager = secretsManager;
+    	this.newMessageHandler = newMessageHandler;
+	}
+    
+    public void login() {
+    	log.info("Logging in Telegram client...");
+        
+    	// TODO only for testing?
+//        Hooks.onOperatorDebug();
+        ResourceLeakDetector.setLevel(Level.PARANOID);
 
-	private boolean logged;
-	
-	@Inject
-	public TelegramClient(SecretsManager secretsManager, TelegramBot bot, NewMessageHandler newMessageHandler) {
-		this.secretsManager = secretsManager;
-		this.bot = bot;
+        MTProtoTelegramClient.create(secretsManager.telegram().apiId(), 
+        		secretsManager.telegram().apiHash(),
+                        // Linux way
+                        Boolean.getBoolean("useQrAuth")
+                                ? new QRAuthorizationHandler(new QRCallback())
+                                : new CodeAuthorizationHandler(new StdINCallback())
+                )
+                .setEntityRetrieverStrategy(EntityRetrievalStrategy.preferred(
+                        EntityRetrievalStrategy.STORE_FALLBACK_RPC, PreferredEntityRetriever.Setting.FULL,
+                        PreferredEntityRetriever.Setting.FULL))
+                // TODO what about this?
+//                .setStoreLayout(new FileStoreLayout(new StoreLayoutImpl(Function.identity()),
+//                        Path.of("C:\\work\\t4j.bin")))
+                .addResponseTransformer(ResponseTransformer.retryFloodWait(MethodPredicate.all(),
+                        MTProtoRetrySpec.max(d -> d.getSeconds() < 30, Long.MAX_VALUE)))
+                .setUpdatesManager(client -> new DefaultUpdatesManager(client,
+                        new Options(Options.DEFAULT_CHECKIN,
+                                Options.MAX_USER_CHANNEL_DIFFERENCE,
+                                true)))
+                .withConnection(client -> {
 
-		Client.configureTdlibLogging();
-        this.updateHandlers = new ArrayList<>();
-        this.updateHandlers.add(new AuthorizationHandler());
-        this.updateHandlers.add(newMessageHandler);
-        handlers = new ConcurrentHashMap<>();
+                    Mono<Void> eventLog = client.getMtProtoClientGroup().updates()
+                    		.on(BaseUpdates.class)
+                    		.doOnNext(newMessageHandler::handle)
+                            .then();
+
+                    var online = new boolean[]{false};
+                    // TODO is it needed?
+                    // *bad way* to make fake online
+                    // update user status in fixed random interval
+                    Mono<Void> status = Flux.<Integer>create(sink -> {
+                                var scheduler = Schedulers.newSingle("t4j-user-status", true);
+                                var task = scheduler.schedule(() -> {
+                                    while (!Thread.currentThread().isInterrupted()) {
+                                        try {
+                                            int sleep = ThreadLocalRandom.current().nextInt(45, 160);
+                                            log.info("Delaying {} status for {} seconds", online[0] ? "offline" : "online", sleep);
+                                            TimeUnit.SECONDS.sleep(sleep);
+                                            sink.next(1);
+                                        } catch (InterruptedException e) {
+                                            sink.complete();
+                                            break;
+                                        }
+                                    }
+                                });
+                                sink.onCancel(Disposables.composite(scheduler, task));
+                            })
+                            .takeUntilOther(client.onDisconnect())
+                            .flatMap(e -> {
+                                boolean state = online[0];
+                                online[0] = !state;
+                                return client.getMtProtoClientGroup().send(DcId.main(), ImmutableUpdateStatus.of(state));
+                            })
+                            .then();
+
+                    return Mono.when(eventLog, status);
+                })
+                .block();
     }
-	
-	public void login() {
-		nativeClientId = Client.createNativeClient();
-		Thread receiverThread = new Thread(new ResponseReceiver(this), "TDLib thread");
-		// For now I don't want daemon thread as it causes JVM to end
-		// receiverThread.setDaemon(true);
-		receiverThread.start();
-        
-        send(new TdApi.GetOption("version"));
-        
-        long loginStart = System.currentTimeMillis();
-        while (!logged && System.currentTimeMillis() - loginStart <= 60000) {
-        	try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				throw new IllegalStateException("The login failed", e);
-			}
+    
+    static class Base2FACallback implements TwoFactorHandler.Callback {
+        protected final Scanner sc = new Scanner(System.in);
+
+        @Override
+        public Mono<String> on2FAPassword(Resources res, TwoFactorHandler.Context ctx) {
+            return Mono.fromCallable(() -> {
+                String base = "The account is protected by 2FA, please write password";
+                String hint = ctx.srp().hint();
+                if (hint != null) {
+                    base += " (Hint: '" + hint + "')";
+                }
+                ctx.log(base);
+
+                return sc.nextLine();
+            });
         }
-        
-        if (!logged) {
-        	throw new IllegalStateException("Login timed out.");
-        }
-	}
-	
-	public void logout() {
-		send(new TdApi.LogOut());
-	}
-
-
-	/**
-	 * Sends a request to the TDLib.
-	 *
-	 * @param query            Object representing a query to the TDLib.
-	 * @param resultHandler    Result handler with onResult method which will be
-	 *                         called with result of the query or with TdApi.Error
-	 *                         as parameter. If it is null, nothing will be called.
-	 * @param exceptionHandler Exception handler with onException method which will
-	 *                         be called on exception thrown from resultHandler. If
-	 *                         it is null, then defaultExceptionHandler will be
-	 *                         called.
-	 */
-	public void send(TdApi.Function query, ResultHandler resultHandler) {
-		long queryId = currentQueryId.incrementAndGet();
-		if (resultHandler != null) {
-			handlers.put(queryId, resultHandler);
-		}
-		Client.nativeClientSend(nativeClientId, queryId, query);
-	}
-
-	/**
-	 * Sends a request to the TDLib with an empty ExceptionHandler.
-	 *
-	 * @param query         Object representing a query to the TDLib.
-	 */
-	public void send(TdApi.Function query) {
-		send(query, new DefautlResultHandler());
-	}
-
-	/**
-	 * Interface for handler for results of queries to TDLib and incoming updates
-	 * from TDLib.
-	 */
-	public interface ResultHandler {
-		/**
-		 * Callback called on result of query to TDLib or incoming update from TDLib.
-		 *
-		 * @param object Result of query or update of type TdApi.Update about new
-		 *               events.
-		 * @param client
-		 */
-		void onResult(TdApi.Object object, TelegramClient client);
-	}
-	
-	private static class AuthorizationHandler implements TelegramClient.ResultHandler {
-		
-		private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationHandler.class);
-		
-		private final MessageIds messageIds;
-		
-		public AuthorizationHandler() {
-			messageIds = new MessageIds();
-		}
-		
-	    @Override
-	    public void onResult(TdApi.Object object, TelegramClient client) {
-	    	if (LOGGER.isTraceEnabled()) {
-	    		LOGGER.trace("Received message '{}'", messageIds.getName(object.getConstructor()));
-	    	}
-	    	
-	    	if (object.getConstructor() != TdApi.UpdateAuthorizationState.CONSTRUCTOR) {
-	             return;
-	    	}
-
-	    	AuthorizationState authorizationState = ((TdApi.UpdateAuthorizationState) object).authorizationState;
-	    	switch (authorizationState.getConstructor()) {
-				case TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR:
-					LOGGER.info("Logging...");
-					TdApi.SetTdlibParameters request = new TdApi.SetTdlibParameters();
-					request.databaseDirectory = "tdlib";
-					request.useMessageDatabase = false;
-					request.useSecretChats = false;
-					request.apiId = client.secretsManager.telegram().apiId();
-					request.apiHash = client.secretsManager.telegram().apiHash();
-					request.systemLanguageCode = "en";
-					request.deviceModel = "Desktop";
-					request.applicationVersion = "1.0";
-					request.enableStorageOptimizer = true;
-		
-					client.send(request, new DefautlResultHandler());
-					
-					break;
-				case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR:
-					LOGGER.debug("Sending phone number...");
-	                client.send(new TdApi.SetAuthenticationPhoneNumber(client.secretsManager.user().phoneNumber(), null));
-	                break;
-				case TdApi.AuthorizationStateWaitEmailAddress.CONSTRUCTOR:
-					LOGGER.debug("Sending email...");
-	                client.send(new TdApi.SetAuthenticationEmailAddress(client.secretsManager.user().email()));
-	                break;
-				case TdApi.AuthorizationStateWaitOtherDeviceConfirmation.CONSTRUCTOR: {
-	                String link = ((TdApi.AuthorizationStateWaitOtherDeviceConfirmation) authorizationState).link;
-	                client.bot.sendMessage("Please confirm this login link on another device: " + link);
-	                break;
-	            }
-	            case TdApi.AuthorizationStateWaitEmailCode.CONSTRUCTOR: {
-	            	client.bot.sendMessage("Please enter email authentication code");
-	            	client.bot.setCallback(m -> client.send(new TdApi.CheckAuthenticationEmailCode(new TdApi.EmailAddressAuthenticationCode(m))));
-	                break;
-	            }
-	            case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR: {
-	            	String code = promptString("Please enter authentication code: ");
-	                client.send(new TdApi.CheckAuthenticationCode(code));
-	                break;
-	                // TODO this does not seem to work as Telegram can recognized sent code and expire it
-//	            	client.bot.sendMessage("Please enter authentication code");
-//	            	client.bot.setCallback(m -> client.send(new TdApi.CheckAuthenticationCode(m)));
-//	                break;
-	            }
-	            case TdApi.AuthorizationStateWaitRegistration.CONSTRUCTOR: {
-	            	client.bot.sendMessage("Please enter your first and last name");
-	            	client.bot.setCallback(m -> {
-	            		String[] name = m.split(" ");
-						client.send(new TdApi.RegisterUser(name[0], name[1]));
-	            	});
-	                break;
-	            }
-	            case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR: {
-	            	client.bot.sendMessage("Please enter password");
-	            	client.bot.setCallback(m -> client.send(new TdApi.CheckAuthenticationPassword(m)));
-	                break;
-	            }
-				case TdApi.AuthorizationStateReady.CONSTRUCTOR:
-					LOGGER.info("Logged successfully");
-					client.logged = true;
-					break;
-				case TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR:
-					LOGGER.info("Logging out");
-					break;
-				case TdApi.AuthorizationStateClosing.CONSTRUCTOR:
-					LOGGER.info("Closing");
-					break;
-				case TdApi.AuthorizationStateClosed.CONSTRUCTOR:
-					LOGGER.info("Closed");
-					break;
-				default:
-					LOGGER.debug("Message {} - {} not processed by this handler",
-							messageIds.getName(object.getConstructor()),
-							messageIds.getName(authorizationState.getConstructor()));
-			}
-	    }
-	}
-	
-	private static String promptString(String prompt) {
-        System.out.print(prompt);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        String str = "";
-        try {
-            str = reader.readLine();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return str;
     }
 
-	private static class ResponseReceiver implements Runnable {
+    static class StdINCallback extends Base2FACallback implements CodeAuthorizationHandler.Callback {
 
-		private static final int MAX_EVENTS = 1000;
-		private final int[] clientIds = new int[MAX_EVENTS];
-		private final long[] eventIds = new long[MAX_EVENTS];
-		private final TdApi.Object[] events = new TdApi.Object[MAX_EVENTS];
+        static String cleanPhoneNumber(String phoneNumber) {
+            if (phoneNumber.startsWith("+"))
+                phoneNumber = phoneNumber.substring(1);
+            phoneNumber = phoneNumber.replaceAll(" ", "");
+            return phoneNumber;
+        }
 
-		private final TelegramClient client;
+        @Override
+        public Mono<PhoneNumberAction> onPhoneNumber(Resources res, CodeAuthorizationHandler.PhoneNumberContext ctx) {
+            return Mono.fromCallable(() -> {
+                ctx.log("Please write your phone number");
 
-		public ResponseReceiver(TelegramClient client) {
-			this.client = client;
-		}
+                String phoneNumber = sc.nextLine();
+                if (phoneNumber.equalsIgnoreCase("cancel")) {
+                    return PhoneNumberAction.cancel();
+                }
+                return PhoneNumberAction.of(cleanPhoneNumber(phoneNumber));
+            });
+        }
 
-		@Override
-		public void run() {
-			while (true) {
-				int resultN = Client.nativeClientReceive(clientIds, eventIds, events, 100000.0 /* seconds */);
-				for (int i = 0; i < resultN; i++) {
-					processResult(clientIds[i], eventIds[i], events[i]);
-					events[i] = null;
-				}
-			}
-		}
+        @Override
+        public Mono<CodeAction> onSentCode(Resources res, CodeAuthorizationHandler.PhoneCodeContext ctx) {
+            return Mono.fromCallable(() -> {
+                ctx.log("Code has been sent, write it");
 
-		private void processResult(int clientId, long id, TdApi.Object object) {
-			List<ResultHandler> handlers = id == 0 ? client.updateHandlers : Collections.singletonList(client.handlers.remove(id));
-			if (handlers != null) {
-				for (ResultHandler resultHandler : handlers) {
-					resultHandler.onResult(object, client);
-				}
-			}
+                String codeOrCommand = sc.nextLine();
+                return switch (codeOrCommand.toLowerCase(Locale.ROOT)) {
+                    case "resend" -> {
+                        ctx.log("Resending code...");
+                        yield CodeAction.resend();
+                    }
+                    case "cancel" -> CodeAction.cancel();
+                    default -> CodeAction.of(codeOrCommand);
+                };
+            });
+        }
+    }
 
-		}
+    static class QRCallback extends Base2FACallback implements QRAuthorizationHandler.Callback {
+        @Override
+        public Mono<ActionType> onLoginToken(Resources res, QRAuthorizationHandler.Context ctx) {
+            return Mono.fromSupplier(() -> {
+                ctx.log("New QR code (you have " + ctx.expiresIn().toSeconds() + " seconds to scan it)");
 
-	}
+                System.out.println(generateQr(ctx.loginUrl()));
+                return ActionType.RETRY;
+            });
+        }
 
+        static String generateQr(String text) {
+            try {
+                Process v = new ProcessBuilder("qrencode", "-t", "UTF8", text)
+                        .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                        .start();
+
+                return v.inputReader(StandardCharsets.UTF_8).lines()
+                        .collect(Collectors.joining("\n"));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+    }
 }

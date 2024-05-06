@@ -61,6 +61,8 @@ public class BinanceFutures {
 	
 	private Map<String, Symbol> exchangeInfo;
 	
+	private long timeDifference;
+	
 	@Inject
 	public BinanceFutures(final SecretsManager secretsManager,
 			@ConfigProperty(name = "binance.futures.http.host") String httpHost,
@@ -179,6 +181,8 @@ public class BinanceFutures {
 			websocketClient.listenUserStream(mapper.readTree(result).get("listenKey").asText(),
 					data -> producer.asyncSendBody(MyRouteBuilder.SEDA_BINANCE_USER_DATA_RECEIVED, data));
 
+			syncTime();
+			
 			// Get position mapping
 			String posInfoResponse = futuresClient.account().positionInformation(params().build());
 			Position[] positionArray =
@@ -200,6 +204,18 @@ public class BinanceFutures {
 		}
 	}
 
+	public void syncTime() {
+		try {
+			String timeResponse = futuresClient.market().time();
+			long serverTime = mapper.readTree(timeResponse).get("serverTime").asLong();
+			long localTime = new Date().getTime();
+			timeDifference = serverTime - localTime;
+			LOGGER.info("Timing syncing - server {}, local {}, diff {}", serverTime, localTime, timeDifference);
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("JSON parsing issue", e);
+		}
+	}
+
 	public void extendListenKey() {
 		futuresClient.userData().extendListenKey();
 	}
@@ -213,12 +229,12 @@ public class BinanceFutures {
 		return new MapBuilder();
 	}
 	
-	private static final class MapBuilder {
+	private final class MapBuilder {
 		private final LinkedHashMap<String, Object> map;
 		
 		MapBuilder() {
 			map = new LinkedHashMap<>();
-			map.put("timestamp", new Date().getTime());
+			map.put("timestamp", new Date().getTime() + timeDifference);
 		}
 		
 		MapBuilder put(String key, Object value) {

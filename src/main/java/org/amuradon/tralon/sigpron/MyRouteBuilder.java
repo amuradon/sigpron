@@ -37,6 +37,9 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		from("timer:keepAlive?delay=360000&fixedRate=true&period=360000")
 			.bean(BinanceFutures.BEAN_NAME, "extendListenKey");
 		
+		from("timer:keepAlive?delay=60000&fixedRate=true&period=360000")
+			.bean(BinanceFutures.BEAN_NAME, "syncTime");
+		
 		from(SEDA_BINANCE_USER_DATA_RECEIVED)
 			.multicast()
 			.to("telegram:bots?chatId=2103542318")

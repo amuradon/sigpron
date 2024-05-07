@@ -36,10 +36,13 @@ public class NewMessageHandler {
 	}
 	
     public void handle(BaseUpdates updates) {
+        // XXX There might be more than one chat, e.g. when the message is forwarded
 		if (updates.chats().size() > 1) {
-			throw new IllegalStateException("There is more than one Telegram source chat for updates.\n" + updates);
+			//throw new IllegalStateException("There is more than one Telegram source chat for updates.\n" + updates);
 		} else if (updates.chats().isEmpty()) {
-			throw new IllegalStateException("There is no Telegram source chat for updates.\n" + updates);
+            // Just ignore
+            return;
+			//throw new IllegalStateException("There is no Telegram source chat for updates.\n" + updates);
 		}
 		
 		Chat chat = updates.chats().get(0);

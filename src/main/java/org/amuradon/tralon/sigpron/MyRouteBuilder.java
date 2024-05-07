@@ -33,7 +33,8 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 			.to("log:messageBus?level=DEBUG")
 			.multicast()
 			.bean(BinanceFutures.BEAN_NAME, "processSignal")
-			.bean(BinanceFutures.BEAN_NAME, "getMarketData");
+			// .bean(BinanceFutures.BEAN_NAME, "getMarketData")
+            ;
 		
 		
 		// Every 60 minutes ping listen key to keep alive, required by Binance
@@ -46,8 +47,12 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		
 		from(SEDA_BINANCE_USER_DATA_RECEIVED)
 			.multicast()
-			.to("telegram:bots?chatId=2103542318")
-			.log("*** User Data Stream ${body}");
+			    .to(TELEGRAM_BOT)
+			    .log("*** User Data Stream ${body}")
+            .end()
+            .filter().jsonpath("$[?(@.e == 'ORDER_TRADE_UPDATE')]")
+            .log("*** ORDER TRADE UPDATE ${body}")
+            ;
 			// TODO publish to analytics - Elasticsearch, OpenSearch...
 	}
 

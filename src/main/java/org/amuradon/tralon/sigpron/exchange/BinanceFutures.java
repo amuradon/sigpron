@@ -163,19 +163,21 @@ public class BinanceFutures {
 		futuresClient.account().newOrder(params()
 				.put("symbol", symbol)
 				.put("side", signal.side().name())
-				.put("type", "MARKET")
+				.put("type", "STOP")
 				.put("quantity", 0.1)
+                .put("stopPrice", signal.stopPrice())
+                .put("price", signal.price())
 				.put("newOrderRespType", "RESULT")
 				.build());
 		
 	}
 	
-	public void getMarketData(@Body Signal signal) {
-		futuresClient.market().markPriceKlines(params()
-				.put("symbol", signal.symbol())
-				.put("interval", "5m")
-				.build());
-	}
+	// public void getMarketData(@Body Signal signal) {
+	// 	futuresClient.market().markPriceKlines(params()
+	// 			.put("symbol", signal.symbol())
+	// 			.put("interval", "5m")
+	// 			.build());
+	// }
 	
 	@PostConstruct
 	public void initialize() {

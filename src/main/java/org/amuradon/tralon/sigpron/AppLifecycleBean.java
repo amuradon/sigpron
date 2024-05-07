@@ -19,12 +19,13 @@ public class AppLifecycleBean {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AppLifecycleBean.class);
 	
 	private final SecretsManager secretsManager;
-	private final TelegramClient telegramClient;
+	private final TelegramClient telegramJavaClient;
 	
 	@Inject
-	public AppLifecycleBean(TelegramClient telegramClient, SecretsManager secretsManager) {
+	public AppLifecycleBean(/*TelegramClient telegramClient,*/ SecretsManager secretsManager,
+			TelegramClient telegramJavaClient) {
 		this.secretsManager  = secretsManager;
-		this.telegramClient = telegramClient;
+		this.telegramJavaClient = telegramJavaClient;
 	}
 	
 	void onStartup(@Observes StartupEvent event) {
@@ -32,7 +33,7 @@ public class AppLifecycleBean {
 		LOGGER.info("Working directory: {}", System.getProperty("user.dir"));
 		
 		LOGGER.debug("Telegram client login");
-		telegramClient.login();
+		telegramJavaClient.login();
 
 	}
 
@@ -40,7 +41,7 @@ public class AppLifecycleBean {
 		LOGGER.info("Sigpron is shutting down...");
 		
 		LOGGER.debug("Telegram client logout");
-		telegramClient.logout();
+//		telegramClient.logout();
 	}
 	
 	public void onComponentAdd(@Observes ComponentAddEvent event) {

@@ -5,3 +5,5 @@
 *.log*
 tdlib/*
 /chats.txt
+t4j.bin
+.theia/settings.json

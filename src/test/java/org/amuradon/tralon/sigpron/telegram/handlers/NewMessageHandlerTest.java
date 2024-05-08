@@ -122,7 +122,7 @@ public class NewMessageHandlerTest {
 	
 		verify(producerMock).asyncSendBody(anyString(), signalCaptor.capture());
 		Signal signal = signalCaptor.getValue();
-		Assertions.assertEquals("WOO/USDT", signal.symbol());
+		Assertions.assertEquals("WOOUSDT", signal.symbol());
 		Assertions.assertEquals("WOO", signal.base());
 		Assertions.assertEquals("USDT", signal.quote());
 		Assertions.assertEquals(Side.BUY, signal.side());

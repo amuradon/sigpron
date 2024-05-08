@@ -16,6 +16,7 @@ import org.amuradon.tralon.sigpron.secrets.SecretsManager;
 import org.apache.camel.Body;
 import org.apache.camel.Header;
 import org.apache.camel.ProducerTemplate;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,6 +153,8 @@ public class BinanceFutures {
 		
 		// TODO Get actual price and compare to requested
 		
+		// TODO As I will combine multiple signal sources, I need to handle symbol conflict = 2 signals coming from different source with the same symbol
+		
 		// TODO to emulate Wolfx / Cornix for TP2 for BUY
 		// - create STOP BUY >= stopPrice then once executed
 		// - create 50% A TAKE_PROFIT SELL >= stopPrice TP1 or just LIMIT SELL (Cornix) ?
@@ -159,8 +162,10 @@ public class BinanceFutures {
 		// - create SL1 100% STOP LIMIT SELL <= stopPrice
 		// - once A executed, cancel SL1
 		// - create SL2 50% STOP LIMIT SELL <= stopPrice
-		// - once B executed, cancel SL2 
-		futuresClient.account().newOrder(params()
+		// - once B executed, cancel SL2
+		String newClientOrderId = RandomStringUtils.randomAlphabetic(16) + "/" + signal.source() + "/open";
+		System.out.println("*** New client order id " + newClientOrderId);
+		String response = futuresClient.account().newOrder(params()
 				.put("symbol", symbol)
 				.put("side", signal.side().name())
 				.put("type", "STOP")
@@ -168,7 +173,14 @@ public class BinanceFutures {
                 .put("stopPrice", signal.stopPrice())
                 .put("price", signal.price())
 				.put("newOrderRespType", "RESULT")
+				.put("workingType", "MARK_PRICE")
+				.put("newClientOrderId", newClientOrderId)
 				.build());
+
+		// TODO as it is stop limit order I need to handle partial fills -> cancel the remaining?
+		
+		// TODO I need to place TP and SL orders once the open order is executed
+		//  - I need to save signal for later retrieval to place TPs and SL
 		
 	}
 	
@@ -241,7 +253,10 @@ public class BinanceFutures {
 		
 		MapBuilder() {
 			map = new LinkedHashMap<>();
-			map.put("timestamp", new Date().getTime() + timeDifference);
+			long time = new Date().getTime();
+			long shifted = time - timeDifference;
+			LOGGER.debug("Shifting time - local {}, diff {}, shifted {}", time, timeDifference, shifted);
+			map.put("timestamp", shifted);
 		}
 		
 		MapBuilder put(String key, Object value) {

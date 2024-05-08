@@ -14,5 +14,6 @@ public record Signal(String symbol,
 		double takeProfit6,
 		double stopLoss,
 		MarginType marginType,
-		int leverage) {
+		int leverage,
+		String source) {
 }

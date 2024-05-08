@@ -29,6 +29,7 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		// Handle user data events
 		
 		from(SEDA_SIGNAL_RECEIVED)
+			.routeId("process-signal")
 			.setHeader("BalancePercentage", constant(10))
 			.to("log:messageBus?level=DEBUG")
 			.multicast()
@@ -39,13 +40,16 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
 		
 		// Every 60 minutes ping listen key to keep alive, required by Binance
 		from("timer:keepAlive?delay=360000&fixedRate=true&period=360000")
+			.routeId("keep-alive-listen-key")
 			.bean(BinanceFutures.BEAN_NAME, "extendListenKey");
 		
 		// Every 60s sync the local and server time
 		from("timer:keepAlive?delay=60000&fixedRate=true&period=360000")
+			.routeId("sync-local-server-time")
 			.bean(BinanceFutures.BEAN_NAME, "syncTime");
 		
 		from(SEDA_BINANCE_USER_DATA_RECEIVED)
+			.routeId("process-user-data")
 			.multicast()
 			    .to(TELEGRAM_BOT)
 			    .log("*** User Data Stream ${body}")

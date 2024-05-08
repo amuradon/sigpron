@@ -36,37 +36,36 @@ public class NewMessageHandler {
 	}
 	
     public void handle(BaseUpdates updates) {
-        // XXX There might be more than one chat, e.g. when the message is forwarded
-		if (updates.chats().size() > 1) {
-			//throw new IllegalStateException("There is more than one Telegram source chat for updates.\n" + updates);
-		} else if (updates.chats().isEmpty()) {
-            // Just ignore
+        if (updates.chats().isEmpty()) {
+            // Ignore as it is certainly not coming signal.
             return;
-			//throw new IllegalStateException("There is no Telegram source chat for updates.\n" + updates);
 		}
 		
-		Chat chat = updates.chats().get(0);
-		if(chat.id() == wolfxChatId || chat.id() == moneyTeamChatId) {
-			
-			SignalParser parser = SignalParser.WOLFX;
-			
-			if (chat.id() == moneyTeamChatId) {
-				parser = SignalParser.MONEY_TEAM;
-			}
+		
+        for (Chat chat : updates.chats()) {
+            if(chat.id() == wolfxChatId || chat.id() == moneyTeamChatId) {
+                
+                SignalParser parser = SignalParser.WOLFX;
+                
+                if (chat.id() == moneyTeamChatId) {
+                    parser = SignalParser.MONEY_TEAM;
+                }
 
-			LOGGER.debug("Processing {} signal", parser);
-			
-			for (Update update: updates.updates()) {
-				if (update instanceof UpdateNewChannelMessage message
-						&& message.message() instanceof BaseMessage baseMessage) {
-					Signal signal = parser.parseSignal(baseMessage.message());
-		
-					if (signal != null) {
-						// TODO is SEDA and asyncSend right combination?
-						producer.asyncSendBody(MyRouteBuilder.SEDA_SIGNAL_RECEIVED, signal);
-					}
-				}
-			}
-		}
+                LOGGER.debug("Processing {} signal", parser);
+                
+                for (Update update: updates.updates()) {
+                    if (update instanceof UpdateNewChannelMessage message
+                            && message.message() instanceof BaseMessage baseMessage) {
+                        Signal signal = parser.parseSignal(baseMessage.message());
+            
+                        if (signal != null) {
+                            // TODO is SEDA and asyncSend right combination?
+                            producer.asyncSendBody(MyRouteBuilder.SEDA_SIGNAL_RECEIVED, signal);
+                        }
+                    }
+                }
+                break;
+            }
+        }
     }
 }

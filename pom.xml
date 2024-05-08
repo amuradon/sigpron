@@ -109,8 +109,8 @@
 			<artifactId>quarkus-rest-qute</artifactId>
 		</dependency>
 		<dependency>
-		    <groupId>io.quarkiverse.qute.web</groupId>
-		    <artifactId>quarkus-qute-web</artifactId>
+			<groupId>io.quarkiverse.qute.web</groupId>
+			<artifactId>quarkus-qute-web</artifactId>
 		</dependency>
 
 		<!-- Camel -->
@@ -142,6 +142,10 @@
 			<groupId>org.apache.camel.quarkus</groupId>
 			<artifactId>camel-quarkus-jsonpath</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.quarkus</groupId>
+			<artifactId>camel-quarkus-caffeine</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
@@ -158,7 +162,7 @@
 			<groupId>com.telegram4j</groupId>
 			<artifactId>telegram4j-core</artifactId>
 			<version>0.1.0-SNAPSHOT</version>
-  		</dependency>
+		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>

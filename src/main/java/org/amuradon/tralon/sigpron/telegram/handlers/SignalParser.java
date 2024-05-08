@@ -31,7 +31,8 @@ public enum SignalParser {
 						0,
 						Double.parseDouble(matcher.group(10)),
 						MarginType.ISOLATED,
-						Integer.parseInt(matcher.group(11))
+						Integer.parseInt(matcher.group(11)),
+						"Wolfx"
 					);
 			} else {
 				return null;
@@ -59,7 +60,8 @@ public enum SignalParser {
 						Double.parseDouble(matcher.group(14)),
 						Double.parseDouble(matcher.group(15)),
 						MarginType.valueOf(matcher.group(5).toUpperCase()),
-						Integer.parseInt(matcher.group(6))
+						Integer.parseInt(matcher.group(6)),
+						"MoneyT"
 					);
 			} else {
 				return null;

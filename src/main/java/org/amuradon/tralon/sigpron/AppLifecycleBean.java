@@ -19,13 +19,13 @@ public class AppLifecycleBean {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AppLifecycleBean.class);
 	
 	private final SecretsManager secretsManager;
-	private final TelegramClient telegramJavaClient;
+	private final TelegramClient telegramClient;
 	
 	@Inject
-	public AppLifecycleBean(/*TelegramClient telegramClient,*/ SecretsManager secretsManager,
-			TelegramClient telegramJavaClient) {
+	public AppLifecycleBean(SecretsManager secretsManager,
+			TelegramClient telegramClient) {
 		this.secretsManager  = secretsManager;
-		this.telegramJavaClient = telegramJavaClient;
+		this.telegramClient = telegramClient;
 	}
 	
 	void onStartup(@Observes StartupEvent event) {
@@ -33,7 +33,7 @@ public class AppLifecycleBean {
 		LOGGER.info("Working directory: {}", System.getProperty("user.dir"));
 		
 		LOGGER.debug("Telegram client login");
-		telegramJavaClient.login();
+		telegramClient.login();
 
 	}
 

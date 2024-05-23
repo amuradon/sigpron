@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import io.fabric8.mockwebserver.MockServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -47,9 +46,6 @@ public class MyRouteBuilderTest {
 	@ConfigProperty(name = "telegram.signals.wolfx")
 	long wolfxChatId;
 	
-//	@Inject
-//	MockServer mockServer;
-
 	@Mock
 	private BaseUpdates baseUpdatesMock;
 	
@@ -78,10 +74,8 @@ public class MyRouteBuilderTest {
 		// TODO
 		// Mock Camel Telegram bot
 		// Mock Binance server
-		//   - OkHttp MockWebServer is not usable, insufficient documentation, probably not supporting web sockets
-		//   - Wiremock does not support web sockets out of box either
-		// Mock AWS secrets
-		// WS seems to connect to default port what is wrong
+		//   - Mock websockets
+		// 	 - WS seems to connect to default port what is wrong
 	}
 	
 	@AfterEach

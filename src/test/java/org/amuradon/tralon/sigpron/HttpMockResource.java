@@ -25,7 +25,8 @@ public class HttpMockResource implements QuarkusTestResourceLifecycleManager {
 	public Map<String, String> start() {
 		final String listenKey = "pqia91ma19a5s61cv6a81va65sdf19v8a65a1a5s61cv6a81va65sdf19v8a65a1";
 		HashMap<ServerRequest, Queue<ServerResponse>> responses = new HashMap<>();
-		server = new DefaultMockServer(new io.fabric8.mockwebserver.Context(), new MockWebServer(), responses, new UrlParamsIgnoringDispatcher(responses), false);
+		server = new DefaultMockServer(new io.fabric8.mockwebserver.Context(), new MockWebServer(), responses,
+				new UrlParamsIgnoringDispatcher(responses), false);
 		
 		expectPost("/fapi/v1/listenKey", () ->
 			String.format("""
@@ -41,8 +42,6 @@ public class HttpMockResource implements QuarkusTestResourceLifecycleManager {
 			}		
 			""", new Date().getTime()));
 		
-		// FIXME Use MockDispatcher does exact path match but bot sends parameters as well -> not matching
-		// I would probably go to implement my own Dispatcher dropping fabric8 gradually
 		// Simplified
 		expectGet("/fapi/v2/positionRisk", () ->
 			"""

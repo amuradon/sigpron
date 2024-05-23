@@ -10,8 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
@@ -26,15 +24,13 @@ public class SecretsManager {
 	private ExchangeSecret exchange;
 	
 	@Inject
-	public SecretsManager(@ConfigProperty(name = "secrets.profile") String profile) {
+	public SecretsManager(@ConfigProperty(name = "secrets.profile") String profile,
+			final SecretsManagerClient client) {
 		this.profile = profile;
-		client = SecretsManagerClient.builder()
-	    		.credentialsProvider(EnvironmentVariableCredentialsProvider.create())
-	            .region(Region.of("eu-west-1"))
-	            .build();
+		this.client = client;
 	}
 	
-	private <T> T getSecret(T secret, String secretId, Function<JsonNode, T> creatSecret) {
+	private <T> T getSecret(T secret, String secretId, Function<JsonNode, T> createSecret) {
 		if (secret != null) {
 			return secret;
 		}
@@ -47,7 +43,7 @@ public class SecretsManager {
 		try {
 			GetSecretValueResponse getSecretValueResponse = client.getSecretValue(getSecretValueRequest);
 			JsonNode node = mapper.readTree(getSecretValueResponse.secretString());
-			return creatSecret.apply(node);
+			return createSecret.apply(node);
 		} catch (Exception e) {
 			throw new IllegalStateException("Secret could not be loaded.", e);
 		}

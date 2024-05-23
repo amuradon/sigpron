@@ -64,13 +64,13 @@ public class BinanceFutures {
 	
 	@Inject
 	public BinanceFutures(final SecretsManager secretsManager,
-			@ConfigProperty(name = "binance.futures.http.host") String httpHost,
-			@ConfigProperty(name = "binance.futures.websocket.host") String websocketHost,
+			@ConfigProperty(name = "binance.futures.http.url") String httpUrl,
+			@ConfigProperty(name = "binance.futures.websocket.url") String websocketUrl,
 			final ProducerTemplate producer) {
 		this.producer = producer;
 		futuresClient = new UMFuturesClientImpl(secretsManager.binanceFutures().apiKey(),
-				secretsManager.binanceFutures().apiSecret(), "https://" + httpHost);
-		websocketClient = new UMWebsocketClientImpl("wss://" + websocketHost);
+				secretsManager.binanceFutures().apiSecret(), httpUrl);
+		websocketClient = new UMWebsocketClientImpl(websocketUrl);
 		positions = new HashMap<>();
 	}
 	

@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import io.fabric8.mockwebserver.MockServer;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import telegram4j.tl.BaseMessage;
@@ -20,6 +22,7 @@ import telegram4j.tl.Channel;
 import telegram4j.tl.UpdateNewChannelMessage;
 
 @QuarkusTest
+@QuarkusTestResource(HttpMockResource.class)
 public class MyRouteBuilderTest {
 
 	private static final String WOLFX_MESSAGE =
@@ -44,6 +47,9 @@ public class MyRouteBuilderTest {
 	@ConfigProperty(name = "telegram.signals.wolfx")
 	long wolfxChatId;
 	
+//	@Inject
+//	MockServer mockServer;
+
 	@Mock
 	private BaseUpdates baseUpdatesMock;
 	
@@ -58,12 +64,8 @@ public class MyRouteBuilderTest {
 	
 	private AutoCloseable mocks;
 	
-//	@Inject
-//	WireMoc webServerMock;
-	
 	@BeforeEach
 	public void prepare() {
-		
 		// In QuarkusTest the annotation @ExtendWith(MockitoExtension.class) does not work, so doing manual way
 		mocks = MockitoAnnotations.openMocks(this);
 		
@@ -77,8 +79,9 @@ public class MyRouteBuilderTest {
 		// Mock Camel Telegram bot
 		// Mock Binance server
 		//   - OkHttp MockWebServer is not usable, insufficient documentation, probably not supporting web sockets
-		//   - Wiremock seems to be better option but not through Dev Services as it does not seem to be possible to configure it at all - like HTTPS and WSS port etc., insufficient docs
+		//   - Wiremock does not support web sockets out of box either
 		// Mock AWS secrets
+		// WS seems to connect to default port what is wrong
 	}
 	
 	@AfterEach
@@ -89,6 +92,8 @@ public class MyRouteBuilderTest {
 	@Test
 	public void test() {
 		newMessageHandler.handle(baseUpdatesMock);
+		
+		// TODO somehow needs to wait for async processing like WS...
 	}
 
 }

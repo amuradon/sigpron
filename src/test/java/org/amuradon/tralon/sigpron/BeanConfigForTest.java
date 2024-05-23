@@ -5,11 +5,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import org.apache.camel.Component;
+import org.apache.camel.component.stub.StubComponent;
 import org.mockito.MockMakers;
 
 import io.quarkus.test.Mock;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Named;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
@@ -40,5 +43,11 @@ public class BeanConfigForTest {
 				}
 				""");
 		return secretsManagerClientMock;
+	}
+	
+	@Mock
+	@Named("telegram")
+	public Component telegram() {
+		return new StubComponent();
 	}
 }

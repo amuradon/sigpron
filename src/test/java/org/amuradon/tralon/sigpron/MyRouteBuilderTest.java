@@ -72,7 +72,6 @@ public class MyRouteBuilderTest {
 		when(baseMessageMock.message()).thenReturn(WOLFX_MESSAGE);
 		
 		// TODO
-		// Mock Camel Telegram bot
 		// Mock Binance server
 		//   - Mock websockets
 		// 	 - WS seems to connect to default port what is wrong

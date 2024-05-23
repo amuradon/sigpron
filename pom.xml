@@ -187,6 +187,11 @@
 			<artifactId>quarkus-junit5-mockito</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.camel.quarkus</groupId>
+			<artifactId>camel-quarkus-stub</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<!-- managed version comes from quarkus-bom ?! -->
 		<dependency>
 			<groupId>io.fabric8</groupId>

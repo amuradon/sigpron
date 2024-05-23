@@ -34,13 +34,12 @@ public class AppLifecycleBean {
 		
 		LOGGER.debug("Telegram client login");
 		telegramClient.login();
-
 	}
 
 	void onShutdown(@Observes ShutdownEvent event) {
 		LOGGER.info("Sigpron is shutting down...");
 		
-		LOGGER.debug("Telegram client logout");
+//		LOGGER.debug("Telegram client logout");
 //		telegramClient.logout();
 	}
 	

@@ -56,6 +56,7 @@ public class MyRouteBuilder extends EndpointRouteBuilder {
             .end()
             .filter().jsonpath("$[?(@.e == 'ORDER_TRADE_UPDATE')]")
             .log("*** ORDER TRADE UPDATE ${body}")
+            .to("elastic:dummy")
             ;
 			// TODO publish to analytics - Elasticsearch, OpenSearch...
 	}

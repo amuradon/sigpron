@@ -5,6 +5,8 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 
 import org.amuradon.tralon.sigpron.telegram.handlers.NewMessageHandler;
+import org.apache.camel.EndpointInject;
+import org.apache.camel.component.mock.MockEndpoint;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +60,9 @@ public class MyRouteBuilderTest {
 	@Mock
 	private BaseMessage baseMessageMock;
 	
+	@EndpointInject("elastic:dummy")
+	MockEndpoint elasticMockEndpoint;
+	
 	private AutoCloseable mocks;
 	
 	@BeforeEach
@@ -83,10 +88,14 @@ public class MyRouteBuilderTest {
 	}
 	
 	@Test
-	public void test() {
+	public void test() throws InterruptedException {
+		elasticMockEndpoint.expectedMessageCount(1);
+		
 		newMessageHandler.handle(baseUpdatesMock);
 		
 		// TODO somehow needs to wait for async processing like WS...
+		// TODO maybe test routes separately, e.g. now I need seda://binanceUserDataReceived
+		elasticMockEndpoint.assertIsSatisfied(30000);
 	}
 
 }

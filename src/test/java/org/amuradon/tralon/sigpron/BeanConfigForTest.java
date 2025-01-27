@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 import org.apache.camel.Component;
+import org.apache.camel.component.mock.MockComponent;
 import org.apache.camel.component.stub.StubComponent;
 import org.mockito.MockMakers;
 
@@ -49,5 +50,11 @@ public class BeanConfigForTest {
 	@Named("telegram")
 	public Component telegram() {
 		return new StubComponent();
+	}
+
+	@Mock
+	@Named("elastic")
+	public Component elastic() {
+		return new MockComponent();
 	}
 }
